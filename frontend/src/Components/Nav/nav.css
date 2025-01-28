@@ -1,0 +1,60 @@
+/* Reset some default styling */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Nav container */
+  .navbar {
+    background-color: #333; /* Dark background for nav */
+    padding: 0; 
+    margin: 0;
+    width: 100%;
+  }
+  
+  /* Unordered list styling */
+  .navbar ul {
+    list-style: none; /* Remove bullet points */
+    margin: 0;
+    padding: 0;
+    display: flex; /* Align items horizontally */
+    justify-content: space-around; /* Equal spacing between items */
+    align-items: center; /* Center vertically */
+    height: 40px; /* Set nav height */
+    margin-bottom: 20px;
+  }
+  
+  /* List items */
+  .navbar li {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Link styling */
+  .navbar h1 {
+    font-size: 18px;
+    color: #fff; /* White text */
+    margin: 0;
+    padding: 0;
+    transition: color 0.3s; /* Smooth hover effect */
+    cursor: pointer; /* Pointer cursor on hover */
+  }
+  
+  /* Hover effect for links */
+  .navbar h1:hover {
+    color: #1e90ff; /* Change color on hover (light blue) */
+  }
+  
+  /* Mobile responsive styling */
+  @media (max-width: 768px) {
+    ul {
+      flex-direction: column; /* Stack items vertically */
+      height: auto; /* Adjust height */
+    }
+  
+    h1 {
+      font-size: 16px; /* Slightly smaller font for smaller screens */
+    }
+  }
+  
