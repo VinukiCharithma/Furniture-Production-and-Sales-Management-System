@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import "./nav.css";
 import { Link } from "react-router-dom";
 
 function Nav() {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   return (
     <div className="navbar">
       <ul>
@@ -26,11 +28,30 @@ function Nav() {
             <h1>Tours</h1>
           </Link>
         </li>
-        <li>
-          <Link to="/yourstory">
-            <h1>Blog</h1>
-          </Link>
+
+        {/*write dropdown*/}
+        <li className="dropdown">
+          <h1
+            className="dropdown-toggle"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            Write
+          </h1>
+          {dropdownOpen && (
+            <ul className="dropdown-menu">
+              <li>
+                <Link to="/blog">Write blogs</Link>
+              </li>
+              <li>
+                <Link to="/addItinerary">Create Itineraries</Link>
+              </li>
+              <li>
+                <Link to="/myItinerary">My Itineraries</Link>
+              </li>
+            </ul>
+          )}
         </li>
+
         <li>
           <Link to="/displayUser">
             <h1>Add Users</h1>
