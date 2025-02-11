@@ -1,148 +1,127 @@
 import React, { useState, useEffect } from "react";
-import Nav from "../Nav/Nav";
+import axios from "axios";
+import { useParams, useNavigate } from "react-router-dom";
 
-function UpdateItinerary({ itineraryId, onUpdate, onCancel }) {
-  const [tripName, setTripName] = useState("");
-  const [destination, setDestination] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [totalBudget, setTotalBudget] = useState("");
-  const [loading, setLoading] = useState(false);
+const UpdateItinerary = () => {
+  const { id } = useParams();
+  const navigate = useNavigate(); // Navigate after update
+
+  // State to store itinerary data
+  const [itinerary, setItinerary] = useState({
+    tripName: "",
+    destination: "",
+    startDate: "",
+    endDate: "",
+    totalBudget: "",
+  });
+
   const [error, setError] = useState("");
 
+  // Fetch existing itinerary details
   useEffect(() => {
-    // Fetch the existing itinerary details
-    fetch(`http://localhost:5000/itineraries/${itineraryId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          const itinerary = data.itinerary;
-          setTripName(itinerary.tripName);
-          setDestination(itinerary.destination.join(", "));
-          setStartDate(itinerary.startDate);
-          setEndDate(itinerary.endDate);
-          setTotalBudget(itinerary.totalBudget);
-        } else {
-          setError("Failed to fetch itinerary details.");
+    const fetchItinerary = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/itineraries/single/${id}`
+        );
+
+        if (response.data.itinerary) {
+          // ✅ Step 5: Ensure itinerary exists
+          setItinerary({
+            ...response.data.itinerary,
+            startDate: response.data.itinerary.startDate.split("T")[0], // ✅ Step 3: Format date
+            endDate: response.data.itinerary.endDate.split("T")[0],
+          });
         }
-      })
-      .catch((error) => {
-        console.error("Error fetching itinerary:", error);
-        setError("Error fetching itinerary.");
-      });
-  }, [itineraryId]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const updatedItinerary = {
-      tripName,
-      destination: destination.split(",").map((d) => d.trim()),
-      startDate,
-      endDate,
-      totalBudget: parseFloat(totalBudget),
+      } catch (error) {
+        console.log("Error fetching itinerary:", error);
+        setError("Failed to load itinerary data.");
+      }
     };
 
-    fetch(`http://localhost:5000/itineraries/${itineraryId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatedItinerary),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          onUpdate(data.itinerary);
-        } else {
-          setError("Failed to update itinerary.");
-        }
-      })
-      .catch((error) => {
-        console.error("Error updating itinerary:", error);
-        setError("Error updating itinerary.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    fetchItinerary();
+  }, [id]);
+
+  // Handle input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setItinerary((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/itineraries/${id}`,
+        itinerary
+      );
+      if (response.status === 200) {
+        alert("Itinerary Updated Successfully!");
+        navigate("/myItinerary"); // Redirect to itineraries list
+      }
+    } catch (error) {
+      setError("Failed to update itinerary. Please try again.");
+    }
   };
 
   return (
     <div>
-      <Nav />
-      <h3>Update Itinerary</h3>
-
+      <h2>Update Itinerary</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
-
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Trip Name:</label>
-          <input
-            type="text"
-            value={tripName}
-            onChange={(e) => setTripName(e.target.value)}
-            required
-          />
-        </div>
-        <br />
+        <label>Trip Name:</label>
+        <input
+          type="text"
+          name="tripName"
+          value={itinerary.tripName}
+          onChange={handleChange}
+          required
+        />
 
-        <div>
-          <label>Destination (comma separated):</label>
-          <input
-            type="text"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            required
-          />
-        </div>
-        <br />
+        <label>Destination:</label>
+        <input
+          type="text"
+          name="destination"
+          value={itinerary.destination}
+          onChange={handleChange}
+          required
+        />
 
-        <div>
-          <label>Start Date:</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-          />
-        </div>
-        <br />
+        <label>Start Date:</label>
+        <input
+          type="date"
+          name="startDate"
+          value={itinerary.startDate}
+          onChange={handleChange}
+          required
+        />
 
-        <div>
-          <label>End Date:</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            required
-          />
-        </div>
-        <br />
+        <label>End Date:</label>
+        <input
+          type="date"
+          name="endDate"
+          value={itinerary.endDate}
+          onChange={handleChange}
+          required
+        />
 
-        <div>
-          <label>Total Budget:</label>
-          <input
-            type="number"
-            value={totalBudget}
-            onChange={(e) => setTotalBudget(e.target.value)}
-            required
-            min="0"
-            step="any"
-          />
-        </div>
-        <br />
+        <label>Total Budget:</label>
+        <input
+          type="number"
+          name="totalBudget"
+          value={itinerary.totalBudget}
+          onChange={handleChange}
+          required
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Update Itinerary"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={loading}>
-          Cancel
-        </button>
+        <button type="submit">Update</button>
       </form>
     </div>
   );
-}
+};
 
 export default UpdateItinerary;
