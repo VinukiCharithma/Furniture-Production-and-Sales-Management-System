@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VinukiCharithma/Furniture-Production-and-Sales-Management-System.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/VinukiCharithma/Furniture-Production-and-Sales-Management-System/issues"
+  },
+  "homepage": "https://github.com/VinukiCharithma/Furniture-Production-and-Sales-Management-System#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.12.1",
+    "nodemon": "^3.1.9"
+  }
+}
