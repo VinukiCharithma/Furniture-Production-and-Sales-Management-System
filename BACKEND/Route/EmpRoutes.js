@@ -1,0 +1,12 @@
+const express = require("express");
+const router = express.Router();
+
+//Insert Model
+const Emp = require("../Model/EmpModel");
+//Insert Controller
+const EmpController = require("../Controllers/EmpController");
+
+router.get("/",EmpController.getAllEmp);
+
+//export
+module.exports = router;

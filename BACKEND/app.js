@@ -1,13 +1,11 @@
-console.log("bye");
 //db password: Vinux1218
 const express = require("express");
 const mongoose = require("mongoose");
+const router = require("./Route/EmpRoutes");
 
 const app = express();
 //connnecting middleware
-app.use("/",(req, res, next) => {
-    res.send("It is working he he he ");
-})
+app.use("/emps", router)
 
 mongoose.connect("mongodb+srv://admin:Vinux1218@cluster0.xeiyk.mongodb.net/")
 .then(() => console.log("Connected to MongoDB"))
