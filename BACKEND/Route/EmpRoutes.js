@@ -10,6 +10,7 @@ router.get("/",EmpController.getAllEmp);
 router.post("/",EmpController.addEmp);
 router.get("/:id",EmpController.getById);
 router.put("/:id",EmpController.updateEmp);
+router.delete("/:id",EmpController.deleteEmp);
 
 //export
 module.exports = router;

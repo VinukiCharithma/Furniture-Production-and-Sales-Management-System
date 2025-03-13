@@ -50,7 +50,7 @@ const getById = async (req, res, next) => {
         return res.status(404).json({message:"Employee not found"});
     }
     //display employees
-    return res.status(200).json({emp});
+    return res.status(200).json(emp);
 };
 
 //Update Emp
@@ -71,7 +71,27 @@ const updateEmp = async (req, res, next) => {
         return res.status(404).json({message:"Unable to update Employee"});
     }
     //display employees
-    return res.status(200).json({emp});
+    return res.status(200).json(emp);
+
+};
+
+//Delete Emp
+const deleteEmp = async (req, res, next) => {
+    const id = req.params.id;
+
+    let emp;
+        
+    try{
+        emp = await Emp.findByIdAndDelete(id);
+    }catch(err){
+        console.log(err);
+    }
+    //emp not found
+    if(!emp){
+        return res.status(404).json({message:"Unable to remove Employee"});
+    }
+    //display employees
+    return res.status(200).json(emp);
 
 };
 
@@ -80,3 +100,4 @@ exports.getAllEmp = getAllEmp;
 exports.addEmp = addEmp;
 exports.getById = getById;
 exports.updateEmp = updateEmp;
+exports.deleteEmp = deleteEmp;
