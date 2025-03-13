@@ -1,3 +1,4 @@
+require("dotenv").config();
 //db password: Vinux1218
 const express = require("express");
 const mongoose = require("mongoose");
@@ -11,7 +12,7 @@ app.use(express.json());
 app.use("/emps", empRouter);
 app.use("/tasks", taskRouter);
 
-mongoose.connect("mongodb+srv://admin:Vinux1218@cluster0.xeiyk.mongodb.net/")
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log("Connected to MongoDB"))
 .then(() => {
     app.listen(5000);
