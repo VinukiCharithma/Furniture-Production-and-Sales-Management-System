@@ -51,9 +51,32 @@ const getById = async (req, res, next) => {
     }
     //display employees
     return res.status(200).json({emp});
+};
+
+//Update Emp
+const updateEmp = async (req, res, next) => {
+    const id = req.params.id;
+    const {first_name,last_name,phone,job,status,username,password} = req.body;
+
+    let emp;
+
+    try{
+        emp = await Emp.findByIdAndUpdate(id,{first_name,last_name,phone,job,status,username,password});
+        emp = await emp.save();
+    } catch(err){
+        console.log(err);
+    }
+    //emp not found
+    if(!emp){
+        return res.status(404).json({message:"Unable to update Employee"});
+    }
+    //display employees
+    return res.status(200).json({emp});
 
 };
+
 
 exports.getAllEmp = getAllEmp;
 exports.addEmp = addEmp;
 exports.getById = getById;
+exports.updateEmp = updateEmp;

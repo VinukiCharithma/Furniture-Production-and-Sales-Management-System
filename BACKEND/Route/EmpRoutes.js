@@ -9,6 +9,7 @@ const EmpController = require("../Controllers/EmpController");
 router.get("/",EmpController.getAllEmp);
 router.post("/",EmpController.addEmp);
 router.get("/:id",EmpController.getById);
+router.put("/:id",EmpController.updateEmp);
 
 //export
 module.exports = router;
