@@ -8,6 +8,7 @@ const EmpController = require("../Controllers/EmpController");
 
 router.get("/",EmpController.getAllEmp);
 router.post("/",EmpController.addEmp);
+router.get("/:id",EmpController.getById);
 
 //export
 module.exports = router;
