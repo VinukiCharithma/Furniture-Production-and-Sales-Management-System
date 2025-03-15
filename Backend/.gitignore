@@ -1,7 +1,0 @@
-# Ignore dependencies and sensitive files
-node_modules/
-target/
-dist/
-*.log
-*.env
-.DS_Store

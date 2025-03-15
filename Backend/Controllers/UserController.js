@@ -20,12 +20,12 @@ const getAllUsers =  async (req , res , next) => {
 //data insert
 const addUsers =  async (req , res, next) => {
     
-    const{username,gmail,password,bio,followers,following} = req.body;
+    const{name,email,password,role,createdAt} = req.body;
 
     let users;
 
     try{
-        users = new User({username,gmail,password,bio,followers,following});
+        users = new User({name,email,password,role,createdAt});
         await users.save();
     }catch(err){
         console.log(err);
@@ -59,13 +59,13 @@ const getById = async (req , res, next) => {
 const updateUser = async (req, res, next) => {
 
     const id = req.params.id;
-    const{username,gmail,password,bio,followers,following} = req.body;
+    const{name,email,password,role,createdAt} = req.body;
 
     let users;
 
     try{
         users = await User.findByIdAndUpdate(id, 
-            {username: username, gmail: gmail, password: password, bio: bio, followers: followers, following: following});
+            {name: name, email: email, password: password, role: role, createdAt: createdAt});
             users = await users.save();
     }catch(err){
         console.log(err);
