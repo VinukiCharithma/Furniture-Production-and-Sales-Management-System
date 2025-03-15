@@ -2,14 +2,6 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import "./App.css";
 import Home from "./Components/Home/Home";
-import TravelGuide from "./Components/TravelGuides/travelguide";
-import Destination from "./Components/Destination/destination";
-import Tour from "./Components/Tours/tour";
-import Blog from "./Components/Blog/blog";
-import CreateItinerary from "./Components/CreateItinerary/CreateItinerary";
-import UserItineraries from "./Components/UserItineraries/UserItineraries";
-import ItineraryDetails from "./Components/ItineraryDetails/ItineraryDetails";
-import UpdateItinerary from "./Components/UpdateItinerary/UpdateItinerary";
 import UserProfile from "./Components/UserProfile/User";
 import UserDetails from "./Components/UserDetails/UserDetails";
 import UpdateUser from "./Components/UpdateUser/UpdateUser";
@@ -21,14 +13,7 @@ function App() {
         <Routes>
         <Route path="/" element={<Home />} />
           <Route path="/mainhome" element={<Home />} />
-          <Route path="/travelguide" element={<TravelGuide />} />
-          <Route path="/visit" element={<Destination />} />
-          <Route path="/rent" element={<Tour />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/addItinerary" element={<CreateItinerary />} />
-          <Route path="/myItinerary" element={<UserItineraries />} />
-          <Route path="/myItinerary/:id" element={<ItineraryDetails />} />
-          <Route path="/updateItinerary/:id" element={<UpdateItinerary />} />
+
           <Route path="/displayUser" element={<UserDetails />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/profile/:id" element={<UpdateUser />} />
