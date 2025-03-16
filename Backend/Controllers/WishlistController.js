@@ -1,3 +1,4 @@
+const mongoose = require("mongoose"); // Add this line
 const Wishlist = require("../Model/WishlistModel");
 const Product = require("../Model/ProductModel");
 
@@ -12,24 +13,14 @@ const addItemToWishlist = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    let wishlist = await Wishlist.findOne({ userId });
-
-    if (!wishlist) {
-      wishlist = new Wishlist({ userId, items: [] });
-    }
-
-    // Check if product is already in the wishlist
-    const itemExists = wishlist.items.some((item) =>
-      item.productId.equals(productId)
+    // Add item to wishlist atomically
+    const updatedWishlist = await Wishlist.findOneAndUpdate(
+      { userId, "items.productId": { $ne: productId } }, // Ensure item doesn't already exist
+      { $push: { items: { productId } } }, // Add new item
+      { new: true, upsert: true } // Create wishlist if it doesn't exist
     );
-    if (itemExists) {
-      return res.status(400).json({ error: "Item already in wishlist" });
-    }
 
-    wishlist.items.push({ productId });
-    await wishlist.save();
-
-    res.json(wishlist);
+    res.json(updatedWishlist);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -48,20 +39,31 @@ const getWishlist = async (req, res) => {
   }
 };
 
-module.exports = {
-  addItemToWishlist,
-  getWishlist,
-};
-
 // Update Wishlist (WL3)
 const updateWishlist = async (req, res) => {
   try {
     const { items } = req.body;
+    const { userId } = req.params;
+
+    console.log("userId:", userId); // Debugging
+    console.log("items:", items); // Debugging
+
+    // Validate items array
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ error: "Items must be an array" });
+    }
+
+    // Update wishlist atomically
     const updatedWishlist = await Wishlist.findOneAndUpdate(
-      { userId: req.params.userId },
-      { items },
+      { userId },
+      { $set: { items } }, // Replace the entire items array
       { new: true }
     );
+
+    if (!updatedWishlist) {
+      return res.status(404).json({ error: "Wishlist not found" });
+    }
+
     res.json(updatedWishlist);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -71,12 +73,20 @@ const updateWishlist = async (req, res) => {
 // Delete Wishlist Item (WL4)
 const deleteWishlistItem = async (req, res) => {
   try {
-    const wishlist = await Wishlist.findOne({ userId: req.params.userId });
-    wishlist.items = wishlist.items.filter(
-      (item) => item.productId.toString() !== req.params.productId
+    const { userId, productId } = req.params;
+
+    // Remove item from wishlist atomically
+    const updatedWishlist = await Wishlist.findOneAndUpdate(
+      { userId },
+      { $pull: { items: { productId } } }, // Remove the item
+      { new: true }
     );
-    await wishlist.save();
-    res.json(wishlist);
+
+    if (!updatedWishlist) {
+      return res.status(404).json({ error: "Wishlist not found" });
+    }
+
+    res.json(updatedWishlist);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -84,23 +94,38 @@ const deleteWishlistItem = async (req, res) => {
 
 // Move Wishlist to Cart (WL5)
 const moveToCart = async (req, res) => {
-  try {
-    const { productId } = req.body;
-    const wishlist = await Wishlist.findOne({ userId: req.params.userId });
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    const item = wishlist.items.find(
-      (item) => item.productId.toString() === productId
+  try {
+    const { userId } = req.params;
+    const { productId } = req.body;
+
+    // Remove item from wishlist atomically
+    const updatedWishlist = await Wishlist.findOneAndUpdate(
+      { userId },
+      { $pull: { items: { productId } } }, // Remove the item
+      { new: true, session }
     );
 
-    if (item) {
-      // Add item to Cart logic here (TBD)
-      wishlist.items = wishlist.items.filter(
-        (item) => item.productId.toString() !== productId
-      );
-      await wishlist.save();
+    if (!updatedWishlist) {
+      throw new Error("Wishlist not found");
     }
-    res.json({ message: "Item moved to cart" });
+
+    // Add item to cart (example logic)
+    // await Cart.findOneAndUpdate(
+    //   { userId },
+    //   { $push: { items: { productId } } },
+    //   { new: true, session }
+    // );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ message: "Item moved to cart", wishlist: updatedWishlist });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(500).json({ error: error.message });
   }
 };
@@ -108,18 +133,20 @@ const moveToCart = async (req, res) => {
 // Clear Wishlist (WL6)
 const clearWishlist = async (req, res) => {
   try {
-    const wishlist = await Wishlist.findOne({ userId: req.params.userId });
+    const { userId } = req.params;
 
-    if (!wishlist) {
+    // Clear wishlist atomically
+    const updatedWishlist = await Wishlist.findOneAndUpdate(
+      { userId },
+      { $set: { items: [] } }, // Clear the items array
+      { new: true }
+    );
+
+    if (!updatedWishlist) {
       return res.status(404).json({ error: "Wishlist not found" });
     }
 
-    // Clear the items array properly
-    wishlist.items = [];
-    await wishlist.markModified("items"); // Ensure Mongoose detects the change
-    await wishlist.save();
-
-    res.json({ message: "Wishlist cleared successfully", wishlist });
+    res.json({ message: "Wishlist cleared successfully", wishlist: updatedWishlist });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
