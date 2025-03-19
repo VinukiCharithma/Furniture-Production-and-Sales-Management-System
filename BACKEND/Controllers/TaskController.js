@@ -1,65 +1,144 @@
 const Task = require("../Model/TaskModel");
 const Emp = require("../Model/EmpModel");
-const AI = require("../Utils/taskAI"); // ✅ Corrected path to AI module
+const AI = require("../Utils/taskAI");
 
-// ✅ Create Task Schedule using AI
-const createTaskSchedule = async (req, res) => {
-    const { orderId, requirements, deadline } = req.body; // Include deadline for risk analysis
+// 1️⃣ Fetch all orders sorted by priority
+const getOrdersByPriority = async (req, res, next) => {
     try {
-        // Call AI to generate tasks
+        const tasks = await Task.find().sort({ priorityLevel: -1 });
+        return res.status(200).json(tasks);
+    } catch (error) {
+        next(error); // Passes error to middleware
+    }
+};
+
+// 2️⃣ Preview AI-generated tasks before saving
+const previewTaskSchedule = async (req, res, next) => {
+    const { requirements, deadline } = req.body;
+    try {
         const aiResponse = await AI.generateTasks({ requirements, deadline });
 
         if (!aiResponse) {
             return res.status(500).json({ message: "AI task generation failed." });
         }
 
-        // Process AI response into structured tasks
-        const assignedTasks = aiResponse.tasks.map(task => ({
-            taskName: task.taskName,
-            assignedTo: task.assignedTo,
-            estimatedTime: task.estimatedTime,
-            status: "Pending"
-        }));
-
-        // Save task schedule to database
-        const newTaskSchedule = new Task({
-            orderId,
-            tasks: assignedTasks,
+        return res.status(200).json({ 
+            message: "AI-generated tasks ready for review.", 
+            tasks: aiResponse.tasks, 
             totalEstimatedTime: aiResponse.totalEstimatedTime,
             riskLevel: aiResponse.riskLevel,
-            suggestedNewDeadline: aiResponse.suggestedNewDeadline || null,
+            suggestedNewDeadline: aiResponse.suggestedNewDeadline || null
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+// 3️⃣ Save AI-generated task schedule after user confirmation
+const saveTaskSchedule = async (req, res, next) => {
+    const { orderId, priorityLevel, tasks, totalEstimatedTime, riskLevel, suggestedNewDeadline } = req.body;
+
+    try {
+        const newTaskSchedule = new Task({
+            orderId,
+            priorityLevel,
+            tasks,
+            totalEstimatedTime,
+            riskLevel,
+            suggestedNewDeadline: suggestedNewDeadline || null,
             customerApproval: "Pending"
         });
 
         await newTaskSchedule.save();
-
-        return res.status(200).json({ message: "Task schedule created, awaiting customer approval.", newTaskSchedule });
+        return res.status(200).json({ message: "Task schedule saved successfully.", newTaskSchedule });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error generating task schedule." });
+        next(error);
     }
 };
 
-// ✅ Approve or Decline Task Schedule
-const approveOrDeclineTask = async (req, res) => {
+// 4️⃣ Update Task Priority, Manual Assignment, and Edit Production Timeline
+const updateTaskSchedule = async (req, res, next) => {
     const { id } = req.params;
-    const { approvalStatus } = req.body;
+    const { priorityLevel, tasks } = req.body;
     try {
-        const taskSchedule = await Task.findByIdAndUpdate(id, { customerApproval: approvalStatus }, { new: true });
-        if (!taskSchedule) return res.status(404).json({ message: "Task schedule not found." });
+        const updatedTask = await Task.findByIdAndUpdate(id, { priorityLevel, tasks }, { new: true });
+        return res.status(200).json(updatedTask);
+    } catch (error) {
+        next(error);
+    }
+};
 
-        // If declined, cancel order
-        if (approvalStatus === "Declined") {
-            await Task.findByIdAndDelete(id);
-            return res.status(200).json({ message: "Task schedule was declined and order has been canceled." });
+// 5️⃣ Track progress of an order
+const trackOrderProgress = async (req, res, next) => {
+    const { id } = req.params;
+    try {
+        const order = await Task.findById(id);
+        return res.status(200).json({ progress: order.progress });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// 6️⃣ Alert if a task is delayed
+const checkForDelays = async (req, res, next) => {
+    try {
+        const delayedTasks = await Task.find({ "tasks.dueDate": { $lt: new Date() }, "tasks.status": "Pending" });
+        return res.status(200).json(delayedTasks);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// 7️⃣ Get tasks assigned to a specific employee
+const getTasksByEmployee = async (req, res, next) => {
+    const { employeeId } = req.params;
+    
+    try {
+        const tasks = await Task.find({ "tasks.assignedTo": employeeId })
+            .populate("tasks.assignedTo", "name skill")
+            .exec();
+        
+        return res.status(200).json({ tasks });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// 8️⃣ Update Task Progress (Mark as In Progress / Completed)
+const updateTaskProgress = async (req, res, next) => {
+    const { taskId, status } = req.body; // Task ID within the order, and new status
+    try {
+        // Find the task schedule containing this task
+        const taskSchedule = await Task.findOne({ "tasks._id": taskId });
+
+        if (!taskSchedule) {
+            return res.status(404).json({ message: "Task not found." });
         }
 
-        return res.status(200).json({ message: "Task schedule updated.", taskSchedule });
+        // Update task status
+        const updatedTasks = taskSchedule.tasks.map(task => {
+            if (task._id.toString() === taskId) {
+                task.status = status; // "Pending" → "In Progress" → "Completed"
+            }
+            return task;
+        });
+
+        // Save the updated schedule
+        taskSchedule.tasks = updatedTasks;
+        await taskSchedule.save();
+
+        return res.status(200).json({ message: "Task status updated.", taskSchedule });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error updating approval status." });
+        next(error);
     }
 };
 
-exports.createTaskSchedule = createTaskSchedule;
-exports.approveOrDeclineTask = approveOrDeclineTask;
+exports.getOrdersByPriority = getOrdersByPriority;
+exports.previewTaskSchedule = previewTaskSchedule;
+exports.saveTaskSchedule = saveTaskSchedule;
+exports.updateTaskSchedule = updateTaskSchedule;
+exports.trackOrderProgress = trackOrderProgress;
+exports.checkForDelays = checkForDelays;
+exports.getTasksByEmployee = getTasksByEmployee;
+exports.updateTaskProgress = updateTaskProgress;

@@ -1,42 +1,28 @@
-const axios = require("axios");
+const genAI = require("@google/generative-ai");
 require("dotenv").config();
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY; // Store your API key in .env file
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Get Gemini API Key from .env
 
 const generateTasks = async (requirements) => {
     try {
-        const response = await axios.post(
-            "https://api.openai.com/v1/chat/completions",
-            {
-                model: "gpt-4",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an AI assistant that helps manage wood furniture production tasks efficiently."
-                    },
-                    {
-                        role: "user",
-                        content: `Given the following furniture order details, generate a structured list of production tasks, estimated time per task, required skills, and detect if the deadline is feasible. If the deadline is not feasible, suggest a realistic completion time.  
-                        
-                        Order Details: ${JSON.stringify(requirements)}`
-                    }
-                ],
-                temperature: 0.7
-            },
-            {
-                headers: {
-                    "Authorization": `Bearer ${OPENAI_API_KEY}`,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
+        const genAIInstance = new genAI.GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAIInstance.getGenerativeModel({ model: "gemini-pro" });
 
-        const aiResponse = response.data.choices[0].message.content;
+        const prompt = `You are an AI assistant that helps manage wood furniture production tasks efficiently.
+        Given the following furniture order details, generate a structured list of production tasks, estimated time per task, required skills, and detect if the deadline is feasible.
+        If the deadline is not feasible, suggest a realistic completion time.
+
+        Order Details: ${JSON.stringify(requirements)}`;
+
+        const result = await model.generateContent(prompt);
+        const aiResponse = result.response.text(); // Get AI response as text
+
         return JSON.parse(aiResponse); // Ensure AI responds with structured JSON
     } catch (error) {
-        console.error("Error generating tasks with AI:", error.response?.data || error.message);
+        console.error("Error generating tasks with AI:", error.message);
         return null;
     }
 };
+
 
 module.exports = { generateTasks };
