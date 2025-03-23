@@ -4,9 +4,9 @@ const Schema = mongoose.Schema;
 const wishlistSchema = new Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "UserModel", required: true },
     items: [
-      {
-        productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductModel", required: true }
-      },
+        {
+            productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductModel", required: true }
+        },
     ],
 });
 
