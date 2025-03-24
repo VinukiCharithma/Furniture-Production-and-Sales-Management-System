@@ -27,8 +27,15 @@ export const addUser = async (userData) => {
 // Get user by ID
 export const getUserById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}`);
-    return response.data;
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found");
+
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.user;
   } catch (error) {
     console.error("Error fetching user by ID:", error);
     throw error;
@@ -38,7 +45,13 @@ export const getUserById = async (id) => {
 // Update user
 export const updateUser = async (id, userData) => {
   try {
-    const response = await axios.put(`${API_URL}/${id}`, userData);
+    const token = localStorage.getItem("token"); // Get auth token
+    const response = await axios.put(`${API_URL}/${id}`, userData, {
+      headers: {
+        Authorization: `Bearer ${token}`, // Send token in request headers
+        "Content-Type": "application/json",
+      },
+    });
     return response.data;
   } catch (error) {
     console.error("Error updating user:", error);
@@ -64,19 +77,6 @@ export const registerUser = async (userData) => {
     return response.data;
   } catch (error) {
     console.error("Error registering user:", error);
-    throw error;
-  }
-};
-
-// Login user
-export const loginUser = async (userData) => {
-  try {
-    const response = await axios.post(`${API_URL}/login`, userData);
-    localStorage.setItem("token", response.data.token); // Save token
-    localStorage.setItem("userId", response.data.user._id); // Save user ID
-    return response.data;
-  } catch (error) {
-    console.error("Error logging in:", error);
     throw error;
   }
 };

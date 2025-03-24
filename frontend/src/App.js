@@ -9,7 +9,6 @@ import UserProfile from "./Pages/UserProfile";
 import Wishlist from "./Pages/Wishlist";
 import Checkout from "./Pages/Checkout";
 import OrderConfirmation from "./Pages/OrderConfirmation";
-import Product from "./Pages/Product";
 import Cart from "./Pages/Cart";
 import CreateOrder from "./Pages/CreateOrder";
 import OrderDetails from "./Pages/OrderDetails";
@@ -23,6 +22,8 @@ import ProtectedRoute from "./Components/ProtectedRoute"; // Use "Components" (u
 import AdminRoute from "./Components/AdminRoute"; // Use "Components" (uppercase)
 import Dashboard from "./Pages/Dashboard"; // Import Dashboard
 import AdminDashboard from "./Pages/AdminDashboard"; // Import AdminDashboard
+import ProductCatalog from "./Pages/ProductCatalog";
+import ProductDetails from "./Pages/ProductDetails";
 
 const App = () => {
   return (
@@ -34,6 +35,9 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+
+          <Route path="/products" element={<ProductCatalog />} />
+          <Route path="/products/:id" element={<ProductDetails />} />
 
           {/* Protected Routes (Authenticated Users) */}
           <Route
@@ -81,14 +85,6 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <OrderConfirmation />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/product/:productId"
-            element={
-              <ProtectedRoute>
-                <Product />
               </ProtectedRoute>
             }
           />

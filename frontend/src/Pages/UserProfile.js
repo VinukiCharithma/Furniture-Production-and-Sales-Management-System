@@ -4,99 +4,98 @@ import { getUserById, updateUser } from "../Services/userService";
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("Customer");
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false); // Toggle form visibility
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+
   const navigate = useNavigate();
 
-  // Fetch user data on component mount
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const userId = localStorage.getItem("userId"); // Assuming userId is stored in localStorage after login
+      const userId = localStorage.getItem("userId");
       if (!userId) {
-        navigate("/login"); // Redirect to login if userId is not found
+        navigate("/login");
         return;
       }
 
       try {
         const userData = await getUserById(userId);
         setUser(userData);
-        setName(userData.name);
-        setEmail(userData.email);
-        setRole(userData.role);
+        setFormData({
+          name: userData.name,
+          email: userData.email,
+          password: "", // Keep empty for security
+        });
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching user profile:", error);
-        setMessage("Failed to fetch user profile");
+        navigate("/login");
       }
     };
 
     fetchUserProfile();
   }, [navigate]);
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const userId = localStorage.getItem("userId");
 
     try {
-      const updatedUser = await updateUser(user._id, {
-        name,
-        email,
-        password: password || undefined, // Only update password if provided
-        role,
-      });
-
-      setUser(updatedUser);
-      setMessage("Profile updated successfully!");
+      await updateUser(userId, formData);
+      alert("Profile updated successfully!");
+      setUser({ ...user, ...formData });
+      setEditMode(false);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      setMessage("Failed to update profile");
+      alert("Failed to update profile.");
+      console.error("Update error:", error);
     }
   };
 
-  if (!user) {
+  if (loading) {
     return <p>Loading...</p>;
   }
 
   return (
     <div>
       <h2>User Profile</h2>
-      <form onSubmit={handleSubmit}>
+
+      {user && !editMode && (
         <div>
-          <label>Name:</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <p><strong>Name:</strong> {user.name}</p>
+          <p><strong>Email:</strong> {user.email}</p>
+          <button onClick={() => setEditMode(true)}>Edit Profile</button>
         </div>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            placeholder="Leave blank to keep current password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Role:</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="Admin">Admin</option>
-            <option value="Customer">Customer</option>
-          </select>
-        </div>
-        <button type="submit">Update Profile</button>
-      </form>
-      {message && <p>{message}</p>}
+      )}
+
+      {editMode && (
+        <form onSubmit={handleSubmit}>
+          <label>
+            Name:
+            <input type="text" name="name" value={formData.name} onChange={handleChange} required />
+          </label>
+          <br />
+          <label>
+            Email:
+            <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+          </label>
+          <br />
+          <label>
+            New Password:
+            <input type="password" name="password" value={formData.password} onChange={handleChange} />
+          </label>
+          <br />
+          <button type="submit">Update</button>
+          <button type="button" onClick={() => setEditMode(false)}>Cancel</button>
+        </form>
+      )}
     </div>
   );
 };

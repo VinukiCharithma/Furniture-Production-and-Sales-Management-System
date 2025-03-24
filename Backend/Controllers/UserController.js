@@ -38,22 +38,25 @@ const addUsers =  async (req , res, next) => {
 };
 
 //Get by id
-const getById = async (req , res, next) => {
-
+const getById = async (req, res) => {
     const id = req.params.id;
-
-    let user;
-
-    try{
-        user = await User.findById(id);
-    }catch(err){
-        console.log(err);
+  
+    // Ensure the authenticated user is requesting their own data
+    if (id !== req.userId) {
+      return res.status(403).json({ message: "Unauthorized access." });
     }
-    if(!user){
-        return res.status(404).json({message:"user not found"});
+  
+    try {
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(200).json({ user });
+    } catch (error) {
+      console.error("Error fetching user by ID:", error);
+      res.status(500).json({ message: "Error fetching user by ID", error: error.message });
     }
-    return res.status(200).json({user});
-};
+  };
 
 //Update User Details
 const updateUser = async (req, res, next) => {

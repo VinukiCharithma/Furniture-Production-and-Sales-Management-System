@@ -25,16 +25,17 @@ export const AuthProvider = ({ children }) => {
     // Login function
     const login = async (email, password) => {
         try {
-            const response = await axios.post("http://localhost:5000auth/login", {
+            const response = await axios.post("http://localhost:5000/auth/login", {
                 email,
                 password,
             });
 
-            // Save token and user data
+            // Save token, user, and userId
             setToken(response.data.token);
             setUser(response.data.user);
             localStorage.setItem("token", response.data.token);
             localStorage.setItem("user", JSON.stringify(response.data.user));
+            localStorage.setItem("userId", response.data.user._id); // Save userId
 
             // Redirect to dashboard or home page
             navigate("/dashboard");
@@ -54,11 +55,12 @@ export const AuthProvider = ({ children }) => {
                 role,
             });
 
-            // Save token and user data
+            // Save token, user, and userId
             setToken(response.data.token);
             setUser(response.data.user);
             localStorage.setItem("token", response.data.token);
             localStorage.setItem("user", JSON.stringify(response.data.user));
+            localStorage.setItem("userId", response.data.user._id); // Save userId
 
             // Redirect to dashboard or home page
             navigate("/dashboard");
@@ -74,6 +76,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        localStorage.removeItem("userId"); // Remove userId
 
         // Redirect to home page
         navigate("/");
