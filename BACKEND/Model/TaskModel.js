@@ -1,3 +1,4 @@
+// TaskModel.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
@@ -16,6 +17,6 @@ const taskSchema = new Schema({
     customerApproval: { type: String, enum: ["Pending", "Approved", "Declined"], default: "Pending" },
     progress: { type: Number, default: 0 }, // Track order progress in %
     dispatchStatus: { type: Boolean, default: false } // Mark when ready for dispatch
-});
+}, { collection: 'taskmodels' }); // Explicitly set the collection name
 
-module.exports = mongoose.model("TaskModel", taskSchema);
+module.exports = mongoose.model("TaskModel", taskSchema, 'taskmodels');
