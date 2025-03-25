@@ -10,6 +10,7 @@ router.post("/", authenticate, OrderController.createOrder);
 router.get("/:id", authenticate, OrderController.getOrderById);
 router.get("/user/my-orders", authenticate, OrderController.getUserOrders);
 router.get('/user/history', authenticate, OrderController.getOrderHistory);
+router.put('/:id/cancel', authenticate, OrderController.cancelOrder);
 
 // Export
 module.exports = router;

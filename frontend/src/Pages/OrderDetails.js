@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../Context/AuthContext';
+import api from '../utils/api';
 import './OrderDetails.css';
 
 const OrderDetails = () => {
@@ -16,14 +16,12 @@ const OrderDetails = () => {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const response = await axios.get(`/orders/${orderId}`, {
-          headers: { Authorization: `Bearer ${user.token}` }
-        });
-        setOrder(response.data);
+        const response = await api.get(`/orders/${orderId}`);
+        setOrder(response.data.order);
         
         // Calculate time left for cancellation if order is processing
-        if (response.data.status === 'processing' && response.data.processingStartedAt) {
-          const processingStart = new Date(response.data.processingStartedAt);
+        if (response.data.order.status === 'processing') {
+          const processingStart = new Date(response.data.order.createdAt);
           const deadline = new Date(processingStart.getTime() + 24 * 60 * 60 * 1000);
           updateTimeLeft(deadline);
         }
@@ -64,48 +62,22 @@ const OrderDetails = () => {
 
   const handleCancelOrder = async () => {
     try {
-      const response = await axios.put(`/orders/${orderId}/cancel`, {}, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      setOrder(response.data);
+      const response = await api.put(`/orders/${orderId}/cancel`);
+      setOrder(response.data.order);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to cancel order');
     }
   };
 
-  const getStatusTimeline = () => {
-    const statuses = [
-      { id: 'pending', label: 'Order Placed', date: order.createdAt },
-      { id: 'processing', label: 'Processing', date: order.processingStartedAt },
-      { id: 'completed', label: 'Completed', date: order.status === 'completed' ? order.updatedAt : null },
-      { id: 'shipped', label: 'Shipped', date: order.shippedAt },
-      { id: 'delivered', label: 'Delivered', date: order.deliveredAt },
-      { id: 'cancelled', label: 'Cancelled', date: order.cancelledAt }
-    ];
+  const getStatusBadge = (status) => {
+    const statusClasses = {
+      processing: 'badge-processing',
+      shipped: 'badge-shipped',
+      delivered: 'badge-delivered',
+      cancelled: 'badge-cancelled'
+    };
     
-    const activeStatusIndex = statuses.findIndex(s => s.id === order.status);
-    
-    return (
-      <div className="status-timeline">
-        {statuses.map((status, index) => (
-          <div 
-            key={status.id}
-            className={`timeline-step ${index <= activeStatusIndex ? 'active' : ''} ${status.id === order.status ? 'current' : ''}`}
-          >
-            <div className="timeline-marker"></div>
-            <div className="timeline-content">
-              <h4>{status.label}</h4>
-              {status.date && (
-                <p>{new Date(status.date).toLocaleString()}</p>
-              )}
-              {order.status === 'shipped' && status.id === 'shipped' && order.trackingNumber && (
-                <p>Tracking: {order.trackingNumber}</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <span className={`badge ${statusClasses[status]}`}>{status}</span>;
   };
 
   if (loading) return <div className="loading">Loading order details...</div>;
@@ -119,31 +91,31 @@ const OrderDetails = () => {
       </button>
       
       <div className="order-header">
-        <h1>Order #{order._id}</h1>
+        <h1>Order #{order._id.substring(0, 8)}</h1>
         <div className="order-status">
-          <span className={`status-badge ${order.status}`}>{order.status}</span>
+          {getStatusBadge(order.status)}
           <p>Placed on {new Date(order.createdAt).toLocaleDateString()}</p>
         </div>
       </div>
-      
-      {getStatusTimeline()}
       
       <div className="order-sections">
         <div className="order-items-section">
           <h2>Order Items</h2>
           <div className="order-items">
             {order.items.map(item => (
-              <div key={item._id} className="order-item">
+              <div key={item._id || item.productId._id} className="order-item">
                 <img 
                   src={item.productId.image || '/placeholder-product.jpg'} 
                   alt={item.productId.name} 
+                  className="product-image"
                 />
                 <div className="item-details">
                   <h4>{item.productId.name}</h4>
-                  <p>Quantity: {item.quantity}</p>
-                  <p>Price: Rs. {item.price.toFixed(2)}</p>
-                  <p>Total: Rs. {(item.price * item.quantity).toFixed(2)}</p>
-                  {item.completed && <span className="completed-badge">Completed</span>}
+                  <div className="item-meta">
+                    <span>Quantity: {item.quantity}</span>
+                    <span>Price: Rs. {item.price.toFixed(2)}</span>
+                    <span>Total: Rs. {(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -168,44 +140,77 @@ const OrderDetails = () => {
         <div className="order-info-section">
           <div className="shipping-info">
             <h2>Shipping Information</h2>
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Address:</strong> {order.shippingAddress.address}</p>
-            <p><strong>City:</strong> {order.shippingAddress.city}</p>
-            <p><strong>Postal Code:</strong> {order.shippingAddress.postalCode}</p>
+            <div className="info-grid">
+              <div className="info-row">
+                <span className="info-label">Name:</span>
+                <span className="info-value">{user.name}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Email:</span>
+                <span className="info-value">{user.email}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Address:</span>
+                <span className="info-value">{order.shippingAddress.address}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">City:</span>
+                <span className="info-value">{order.shippingAddress.city}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Postal Code:</span>
+                <span className="info-value">{order.shippingAddress.postalCode}</span>
+              </div>
+            </div>
           </div>
           
           <div className="payment-info">
             <h2>Payment Information</h2>
-            <p><strong>Method:</strong> {order.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'Credit/Debit Card'}</p>
-            <p><strong>Status:</strong> {order.status === 'delivered' && order.paymentMethod === 'cashOnDelivery' ? 'Paid' : 'Pending'}</p>
+            <div className="info-grid">
+              <div className="info-row">
+                <span className="info-label">Method:</span>
+                <span className="info-value">
+                  {order.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'Credit/Debit Card'}
+                </span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Status:</span>
+                <span className="info-value">
+                  {order.status === 'delivered' && order.paymentMethod === 'cashOnDelivery' ? 'Paid' : 'Pending'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
-      {order.status === 'processing' && timeLeft && (
-        <div className="cancellation-notice">
-          <h3>You can cancel this order within 24 hours of processing</h3>
-          <p>Time remaining: {timeLeft}</p>
-          <button 
-            className="cancel-button"
-            onClick={handleCancelOrder}
-          >
-            Cancel Order
-          </button>
+      {order.status === 'processing' && timeLeft && timeLeft !== 'Cancellation window expired' && (
+        <div className="action-section">
+          <div className="cancellation-notice">
+            <h3>You can cancel this order within 24 hours of placement</h3>
+            <p>Time remaining: {timeLeft}</p>
+            <button 
+              className="cancel-button"
+              onClick={handleCancelOrder}
+            >
+              Cancel Order
+            </button>
+          </div>
         </div>
       )}
       
-      {order.status === 'shipped' && order.trackingNumber && (
-        <div className="tracking-info">
-          <h3>Tracking Information</h3>
-          <p>Your order has been shipped with tracking number: <strong>{order.trackingNumber}</strong></p>
-          <button 
-            className="track-button"
-            onClick={() => navigate(`/track-order/${order._id}`)}
-          >
-            Track Order
-          </button>
+      {order.status === 'shipped' && (
+        <div className="action-section">
+          <div className="tracking-info">
+            <h3>Your order is on the way</h3>
+            <p>Expected delivery date: {new Date(order.createdAt).toLocaleDateString()}</p>
+            <button 
+              className="track-button"
+              onClick={() => navigate('/tracking')}
+            >
+              Track Order
+            </button>
+          </div>
         </div>
       )}
     </div>

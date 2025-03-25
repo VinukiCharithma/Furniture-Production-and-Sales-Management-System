@@ -174,3 +174,41 @@ exports.getOrderHistory = async (req, res) => {
     });
   }
 };
+
+// Cancel order
+exports.cancelOrder = async (req, res) => {
+  try {
+    const order = await Order.findOneAndUpdate(
+      { 
+        _id: req.params.id, 
+        userId: req.userId,
+        status: 'processing'
+      },
+      { 
+        $set: { 
+          status: 'cancelled',
+          cancelledAt: new Date() 
+        } 
+      },
+      { new: true }
+    ).populate('items.productId');
+
+    if (!order) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order cannot be cancelled or not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel order',
+      error: error.message
+    });
+  }
+};

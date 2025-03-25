@@ -6,6 +6,7 @@ import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import UserProfile from "./Pages/UserProfile";
 import Wishlist from "./Pages/Wishlist";
+import OrderDetails from "./Pages/OrderDetails"; 
 import OrderHistory from "./Pages/OrderHistory";
 import OrderConfirmation from "./Pages/OrderConfirmation";
 import Checkout from "./Pages/Checkout";
@@ -86,6 +87,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <OrderHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:orderId"
+            element={
+              <ProtectedRoute>
+                <OrderDetails />
               </ProtectedRoute>
             }
           />
