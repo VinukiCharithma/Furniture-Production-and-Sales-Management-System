@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config();
 //db password: Vinux1218
 const express = require("express");
 const mongoose = require("mongoose");

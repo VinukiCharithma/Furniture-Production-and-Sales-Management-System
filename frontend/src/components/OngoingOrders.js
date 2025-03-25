@@ -10,7 +10,7 @@ const OngoingOrders = () => {
         const fetchOrders = async () => {
             try {
                 const response = await axios.get('/tasks/orders');
-                setOrders(response.data.filter(order => order.progress > 0 && order.progress < 100));
+                setOrders(response.data.filter(order => order.progress >= 0 && order.progress < 100 && order.customerApproval === "Approved"));
             } catch (error) {
                 console.error("Error fetching orders:", error);
             }

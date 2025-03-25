@@ -5,9 +5,8 @@ import { useNavigate } from 'react-router-dom';
 
 const PendingOrders = () => {
     const [orders, setOrders] = useState([]);
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [requirements, setRequirements] = useState('');
     const [deadline, setDeadline] = useState('');
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -23,10 +22,31 @@ const PendingOrders = () => {
         fetchOrders();
     }, []);
 
-    const handleGenerateTasks = async () => {
+    const handleDeadlineChange = (orderId, event) => {
+        setSelectedOrderId(orderId);
+        setDeadline(event.target.value);
+    };
+
+    const handleGenerateTasks = async (orderId) => {
+        console.log('Generate Tasks clicked for:', orderId);
+        const orderToProcess = orders.find(order => order.orderId === orderId);
+        if (!orderToProcess) {
+            console.error(`Order with ID ${orderId} not found.`);
+            return;
+        }
+        console.log('Order to process:', orderToProcess);
+
         try {
-            const response = await axios.post('/tasks/preview-tasks', { requirements, deadline });
-            navigate('/taskpreview', { state: { tasks: response.data } });
+            console.log('Sending data:', { orderId: orderId, orderData: orderToProcess, deadline: deadline });
+            const response = await axios.post('/tasks/preview-tasks', {
+                orderId: orderId,
+                orderData: orderToProcess,
+                deadline: deadline,
+            });
+            console.log('Response from /preview-tasks:', response.data);
+            console.log('Response data before navigation:', response.data); // ADDED LOG
+            navigate('/taskpreview', { state: { tasks: response.data, orderId: orderId } });
+            console.log('Navigated to /taskpreview');
         } catch (error) {
             console.error("Error generating tasks:", error);
         }
@@ -37,21 +57,20 @@ const PendingOrders = () => {
             <h2>Pending Orders</h2>
             <ul>
                 {orders.map(order => (
-                    <li key={order._id} onClick={() => setSelectedOrder(order)}>
-                        {order.orderId}
+                    <li key={order._id}>
+                        <strong>Order ID:</strong> {order.orderId}
+                        <div>
+                            <label>Deadline:</label>
+                            <input
+                                type="datetime-local"
+                                value={selectedOrderId === order.orderId ? deadline : ''}
+                                onChange={(e) => handleDeadlineChange(order.orderId, e)}
+                            />
+                        </div>
+                        <button onClick={() => handleGenerateTasks(order.orderId)}>Generate Tasks</button>
                     </li>
                 ))}
             </ul>
-            {selectedOrder && (
-                <div>
-                    <h3>Order Details: {selectedOrder.orderId}</h3>
-                    <p>Order ID: {selectedOrder.orderId}</p>
-                    <p>Priority: {selectedOrder.priorityLevel}</p>
-                    <textarea value={requirements} onChange={(e) => setRequirements(e.target.value)} placeholder="Requirements" />
-                    <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-                    <button onClick={handleGenerateTasks}>Generate Tasks</button>
-                </div>
-            )}
         </div>
     );
 };

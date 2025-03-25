@@ -11,11 +11,13 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // Add /tasks/ before /orders
                 const orders = await axios.get('/tasks/orders');
+                // Add /tasks/ before /delays
                 const delayed = await axios.get('/tasks/delays');
 
                 setPendingCount(orders.data.filter(order => order.customerApproval === "Pending").length);
-                setOngoingCount(orders.data.filter(order => order.progress > 0 && order.progress < 100).length);
+                setOngoingCount(orders.data.filter(order => order.progress >= 0 && order.progress < 100 && order.customerApproval === "Approved").length);
                 setCompletedCount(orders.data.filter(order => order.progress === 100).length);
                 setDelayedCount(delayed.data.length);
 

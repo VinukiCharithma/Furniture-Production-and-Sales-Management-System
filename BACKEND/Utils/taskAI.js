@@ -1,61 +1,75 @@
-const genAI = require("@google/generative-ai");
-const Emp = require("../Model/EmpModel"); // Import your EmpModel
-require("dotenv").config();
+// Utils/taskAI.js
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Initialize the Gemini AI client with your API key
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_STUDIO_API_KEY);
 
-const generateTasks = async (requirements) => {
+// Get the Gemini 2.0 Flash model
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+async function generateTasks({ requirements, deadline }) {
     try {
-        const genAIInstance = new genAI.GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAIInstance.getGenerativeModel({ model: "gemini-pro" });
-
-        // Fetch employee data
-        const employees = await Emp.find();
-
-        // Construct the prompt with JSON response format instructions
-        let prompt = `You are an AI assistant that helps manage wood furniture production tasks efficiently.
-        Given the following furniture order details and employee information, generate a structured list of production tasks, estimated time per task, and assign each task to an employee based on their skills and availability.
-        If the deadline is not feasible, suggest a realistic completion time.
-
-        Order Details: ${JSON.stringify(requirements)}
-
-        Employee Information: ${JSON.stringify(employees)}
-
-        **Respond with a JSON object in the following format:**
-
-        \`\`\`json
-        {
-            "tasks": [
-                {
-                    "taskName": "Task Name",
-                    "estimatedTime": "Estimated Time (in hours/days)",
-                    "assignedTo": "Employee ID"
-                },
-                // ... more tasks
-            ],
-            "totalEstimatedTime": "Total Estimated Time",
-            "riskLevel": "Risk Level (High, Medium, Low)",
-            "suggestedNewDeadline": "Suggested New Deadline (ISO 8601 format)"
+        let prompt = `You are an expert project manager tasked with breaking down a woodworking order based on the following requirements into a detailed list of actionable tasks in JSON format:\n\nRequirements: ${requirements}\n\n`;
+        if (deadline) {
+            prompt += `Overall Deadline: ${new Date(deadline).toLocaleDateString()} ${new Date(deadline).toLocaleTimeString()}\n\n`;
         }
-        \`\`\`
-        `;
+        prompt += `Generate a JSON array of tasks. Each task object should have the keys: "taskName" (string), "estimatedTime" (number, in hours), and "dueDate" (ISO 8601 date string). Please ensure the response is valid JSON without any markdown formatting.`;
 
-        const result = await model.generateContent(prompt);
-        const aiResponse = result.response.text();
+        const result = await model.generateContent({
+            contents: [{
+                parts: [{ text: prompt }],
+            }],
+        });
+        const response = await result.response;
 
-        let aiResponseJson;
+        if (!response || !response.candidates || response.candidates.length === 0 || !response.candidates[0].content || !response.candidates[0].content.parts || response.candidates[0].content.parts.length === 0) {
+            console.error("Error: No valid AI response received.");
+            return null; // Indicate failure
+        }
+
+        let aiResponseText = response.candidates[0].content.parts[0].text;
+        console.log("Raw AI Response from Gemini:", aiResponseText);
+
+        // Remove markdown code block delimiters if present
+        if (aiResponseText.startsWith("```json")) {
+            aiResponseText = aiResponseText.substring(7, aiResponseText.length - 3).trim();
+        } else if (aiResponseText.startsWith("```")) {
+            aiResponseText = aiResponseText.substring(3, aiResponseText.length - 3).trim();
+        }
+
+        let tasksData;
         try {
-            aiResponseJson = JSON.parse(aiResponse);
-        } catch (parseError) {
-            console.error("Error parsing AI response:", parseError);
+            tasksData = JSON.parse(aiResponseText);
+            if (!Array.isArray(tasksData)) {
+                console.error("AI response is not a JSON array.");
+                return null;
+            }
+        } catch (error) {
+            console.error("Error parsing AI response:", error);
             return null;
         }
 
-        return aiResponseJson;
+        let totalEstimatedTime = 0;
+        tasksData.forEach(task => {
+            if (typeof task.estimatedTime === 'number') {
+                totalEstimatedTime += task.estimatedTime;
+            }
+            if (task.dueDate) {
+                task.dueDate = new Date(task.dueDate);
+            }
+        });
+
+        return {
+            tasks: { tasks: tasksData },
+            totalEstimatedTime: totalEstimatedTime,
+            riskLevel: "Medium",
+            suggestedNewDeadline: null
+        };
+
     } catch (error) {
-        console.error("Error generating tasks with AI:", error.message);
-        return null;
+        console.error("Error generating tasks with Gemini:", error);
+        return null; // Indicate failure
     }
-};
+}
 
 module.exports = { generateTasks };

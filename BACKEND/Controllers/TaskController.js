@@ -12,19 +12,28 @@ const getOrdersByPriority = async (req, res, next) => {
     }
 };
 
-// 2️⃣ Preview AI-generated tasks before saving
+//  2️⃣ Preview AI-generated tasks before saving
 const previewTaskSchedule = async (req, res, next) => {
-    const { requirements, deadline } = req.body;
+    const { orderId, orderData, deadline } = req.body;
+
     try {
-        const aiResponse = await AI.generateTasks({ requirements, deadline });
+        // Extract relevant information from orderData to use as requirements
+        let requirements = `Order ID: ${orderId}\n`;
+        for (const key in orderData) {
+            if (orderData.hasOwnProperty(key) && key !== '_id' && key !== '__v' && key !== 'tasks' && key !== 'totalEstimatedTime' && key !== 'progress' && key !== 'dispatchStatus') {
+                requirements += `${key}: ${orderData[key]}\n`;
+            }
+        }
+
+        const aiResponse = await AI.generateTasks({ requirements: requirements, deadline });
 
         if (!aiResponse) {
             return res.status(500).json({ message: "AI task generation failed." });
         }
 
-        return res.status(200).json({ 
-            message: "AI-generated tasks ready for review.", 
-            tasks: aiResponse.tasks, 
+        return res.status(200).json({
+            message: "AI-generated tasks ready for review.",
+            tasks: aiResponse.tasks,
             totalEstimatedTime: aiResponse.totalEstimatedTime,
             riskLevel: aiResponse.riskLevel,
             suggestedNewDeadline: aiResponse.suggestedNewDeadline || null
@@ -35,24 +44,42 @@ const previewTaskSchedule = async (req, res, next) => {
     }
 };
 
-// 3️⃣ Save AI-generated task schedule after user confirmation
+// Helper function to extract/generate requirements from order data
+function generateRequirementsFromOrderData(orderData) {
+    // This is a placeholder - implement your logic here based on your order data structure
+    if (orderData && orderData.orderId) {
+        return `Generate a task schedule for order ID: ${orderData.orderId}. Consider the priority level: ${orderData.priorityLevel}.`;
+    }
+    return "Generate a task schedule based on the available order information.";
+}
+
+// 3️⃣ Save AI-generated task schedule by updating the existing order
 const saveTaskSchedule = async (req, res, next) => {
-    const { orderId, priorityLevel, tasks, totalEstimatedTime, riskLevel, suggestedNewDeadline } = req.body;
+    const { orderId, tasks, totalEstimatedTime, riskLevel, suggestedNewDeadline } = req.body;
 
     try {
-        const newTaskSchedule = new Task({
-            orderId,
-            priorityLevel,
-            tasks,
-            totalEstimatedTime,
-            riskLevel,
-            suggestedNewDeadline: suggestedNewDeadline || null,
-            customerApproval: "Pending"
-        });
+        // Update the existing order document
+        const updatedOrder = await Task.findOneAndUpdate(
+            { orderId: orderId, customerApproval: "Pending" },
+            {
+                customerApproval: "Approved", // Or whatever the 'ongoing' approval status is
+                productionStatus: "Processing", // Example: set a production status
+                tasks: tasks.tasks,
+                totalEstimatedTime: totalEstimatedTime,
+                riskLevel: riskLevel,
+                suggestedNewDeadline: suggestedNewDeadline || null,
+            },
+            { new: true }
+        );
 
-        await newTaskSchedule.save();
-        return res.status(200).json({ message: "Task schedule saved successfully.", newTaskSchedule });
+        if (!updatedOrder) {
+            return res.status(404).json({ message: `Pending order with ID ${orderId} not found.` });
+        }
+
+        return res.status(200).json({ message: "Order updated to ongoing with generated tasks.", updatedOrder });
+
     } catch (error) {
+        console.error("Error updating order:", error);
         next(error);
     }
 };
@@ -93,12 +120,12 @@ const checkForDelays = async (req, res, next) => {
 // 7️⃣ Get tasks assigned to a specific employee
 const getTasksByEmployee = async (req, res, next) => {
     const { employeeId } = req.params;
-    
+
     try {
         const tasks = await Task.find({ "tasks.assignedTo": employeeId })
             .populate("tasks.assignedTo", "name skill")
             .exec();
-        
+
         return res.status(200).json({ tasks });
     } catch (error) {
         next(error);
