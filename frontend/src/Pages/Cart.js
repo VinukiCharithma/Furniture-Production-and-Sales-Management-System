@@ -1,57 +1,176 @@
-import React, { useEffect, useState } from "react";
-import { getCart, removeFromCart } from "../Services/cartService";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useAuth } from "../Context/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import "./Cart.css";
 
 const Cart = () => {
-  const [cart, setCart] = useState([]);
+  const { user } = useAuth();
+  const [cart, setCart] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
     const fetchCart = async () => {
       try {
-        const cart = await getCart("USER_ID"); // Replace "USER_ID" with the actual user ID
-        setCart(cart.items || []);
+        setLoading(true);
+        const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+        setCart(response.data);
+        setError(null);
       } catch (error) {
-        console.error("Failed to fetch cart:", error);
-        setError(error.message || "An error occurred while fetching the cart.");
+        console.error("Error fetching cart:", error);
+        setError("Failed to load your cart. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     };
-    fetchCart();
-  }, []);
 
-  const handleRemoveFromCart = async (productId) => {
+    fetchCart();
+  }, [user, navigate]);
+
+  const updateQuantity = async (productId, newQuantity) => {
     try {
-      await removeFromCart("USER_ID", productId); // Replace "USER_ID" with the actual user ID
-      setCart(cart.filter((item) => item.productId !== productId));
+      await axios.put(`http://localhost:5000/cart/${user._id}/${productId}`, {
+        quantity: newQuantity
+      });
+      // Refresh cart after update
+      const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      setCart(response.data);
     } catch (error) {
-      console.error("Failed to remove item from cart:", error);
-      setError(error.message || "An error occurred while removing the item from the cart.");
+      console.error("Error updating quantity:", error);
+      alert("Failed to update quantity. Please try again.");
     }
   };
 
-  const handleCheckout = () => {
-    navigate("/checkout");
+  const removeItem = async (productId) => {
+    try {
+      await axios.delete(`http://localhost:5000/cart/${user._id}/${productId}`);
+      // Refresh cart after removal
+      const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      setCart(response.data);
+    } catch (error) {
+      console.error("Error removing item:", error);
+      alert("Failed to remove item. Please try again.");
+    }
   };
 
-  if (error) {
-    return <div>Error: {error}</div>;
+  const clearCart = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/cart/${user._id}/clear`);
+      setCart({ ...cart, items: [] });
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      alert("Failed to clear cart. Please try again.");
+    }
+  };
+
+  if (loading) {
+    return <div className="loading">Loading your cart...</div>;
   }
 
+  if (error) {
+    return <div className="error">{error}</div>;
+  }
+
+  if (!cart || cart.items.length === 0) {
+    return (
+      <div className="empty-cart">
+        <h2>Your Cart is Empty</h2>
+        <p>Looks like you haven't added any items to your cart yet.</p>
+        <Link to="/products" className="continue-shopping">
+          Continue Shopping
+        </Link>
+      </div>
+    );
+  }
+
+  const totalPrice = cart.items.reduce(
+    (sum, item) => sum + (item.productId.price * item.quantity),
+    0
+  );
+
   return (
-    <div>
-      <h2>Your Cart</h2>
-      <ul>
-        {cart.map((item) => (
-          <li key={item._id}>
-            {item.productId.name} - ${item.productId.price} (Quantity: {item.quantity})
-            <button onClick={() => handleRemoveFromCart(item.productId)}>
-              Remove
-            </button>
-          </li>
+    <div className="cart-container">
+      <h2>Your Shopping Cart</h2>
+      
+      <div className="cart-items">
+        {cart.items.map((item) => (
+          <div key={item.productId._id} className="cart-item">
+            <div className="item-image">
+              <img 
+                src={item.productId.image || '/placeholder-image.jpg'} 
+                alt={item.productId.name} 
+              />
+            </div>
+            
+            <div className="item-details">
+              <h3>
+                <Link to={`/products/${item.productId._id}`}>
+                  {item.productId.name}
+                </Link>
+              </h3>
+              <p>Price: Rs. {item.productId.price.toFixed(2)}</p>
+              
+              <div className="quantity-control">
+                <button 
+                  onClick={() => updateQuantity(item.productId._id, item.quantity - 1)}
+                  disabled={item.quantity <= 1}
+                >
+                  -
+                </button>
+                <span>{item.quantity}</span>
+                <button 
+                  onClick={() => updateQuantity(item.productId._id, item.quantity + 1)}
+                >
+                  +
+                </button>
+              </div>
+              
+              <p className="item-total">
+                Total: Rs. {(item.productId.price * item.quantity).toFixed(2)}
+              </p>
+              
+              <button 
+                onClick={() => removeItem(item.productId._id)}
+                className="remove-item"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
         ))}
-      </ul>
-      <button onClick={handleCheckout}>Proceed to Checkout</button>
+      </div>
+      
+      <div className="cart-summary">
+        <h3>Order Summary</h3>
+        <div className="summary-row">
+          <span>Subtotal:</span>
+          <span>Rs. {totalPrice.toFixed(2)}</span>
+        </div>
+        <div className="summary-row">
+          <span>Shipping:</span>
+          <span>Free</span>
+        </div>
+        <div className="summary-row total">
+          <span>Total:</span>
+          <span>Rs. {totalPrice.toFixed(2)}</span>
+        </div>
+        
+        <div className="cart-actions">
+          <button onClick={clearCart} className="clear-cart">
+            Clear Cart
+          </button>
+          <Link to="/checkout" className="checkout-button">
+            Proceed to Checkout
+          </Link>
+        </div>
+      </div>
     </div>
   );
 };

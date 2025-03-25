@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../Context/AuthContext";
 import './ProductDetails.css';
 
 const ProductDetails = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -27,19 +29,46 @@ const ProductDetails = () => {
     };
   
     fetchProductDetails();
-  }, [id]); // Now only depends on id
-  
-  const handleAddToCart = () => {
-    // In a real app, you would add to cart context or Redux store
-    console.log(`Added ${quantity} of ${product.name} to cart`);
-    alert(`${quantity} ${product.name}(s) added to cart!`);
+  }, [id]);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:5000/cart', {
+        userId: user._id,
+        productId: id,
+        quantity: quantity
+      });
+      alert(`${quantity} ${product.name}(s) added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to add item to cart. Please try again.");
+    }
   };
 
-  const handleBuyNow = () => {
-    // In a real app, you would handle checkout process
-    console.log(`Buying ${quantity} of ${product.name}`);
-    alert(`Proceeding to checkout with ${quantity} ${product.name}(s)`);
-    navigate("/checkout");
+  const handleBuyNow = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // First add to cart
+      await axios.post('http://localhost:5000/cart', {
+        userId: user._id,
+        productId: id,
+        quantity: quantity
+      });
+      // Then navigate to checkout
+      navigate("/checkout");
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to proceed to checkout. Please try again.");
+    }
   };
 
   if (loading) {

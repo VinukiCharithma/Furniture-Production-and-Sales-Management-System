@@ -1,0 +1,315 @@
+.order-details-page {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 1rem;
+  }
+  
+  .back-button {
+    background: none;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    padding: 0;
+  }
+  
+  .back-button:hover {
+    text-decoration: underline;
+  }
+  
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .order-header h1 {
+    margin: 0;
+    color: #2c3e50;
+  }
+  
+  .order-status {
+    text-align: right;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-weight: bold;
+    text-transform: capitalize;
+  }
+  
+  .status-badge.pending {
+    background: #f39c12;
+    color: white;
+  }
+  
+  .status-badge.processing {
+    background: #3498db;
+    color: white;
+  }
+  
+  .status-badge.completed {
+    background: #2ecc71;
+    color: white;
+  }
+  
+  .status-badge.shipped {
+    background: #9b59b6;
+    color: white;
+  }
+  
+  .status-badge.delivered {
+    background: #27ae60;
+    color: white;
+  }
+  
+  .status-badge.cancelled {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .status-timeline {
+    position: relative;
+    padding: 1rem 0;
+    margin: 2rem 0;
+  }
+  
+  .status-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 30px;
+    height: 100%;
+    width: 2px;
+    background: #ddd;
+  }
+  
+  .timeline-step {
+    position: relative;
+    padding-left: 60px;
+    margin-bottom: 2rem;
+  }
+  
+  .timeline-step:last-child {
+    margin-bottom: 0;
+  }
+  
+  .timeline-marker {
+    position: absolute;
+    left: 20px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ddd;
+    border: 4px solid white;
+    z-index: 1;
+  }
+  
+  .timeline-step.active .timeline-marker {
+    background: #3498db;
+  }
+  
+  .timeline-step.current .timeline-marker {
+    background: #2ecc71;
+    width: 24px;
+    height: 24px;
+    left: 18px;
+  }
+  
+  .timeline-content {
+    padding: 0.5rem;
+    background: #f9f9f9;
+    border-radius: 6px;
+  }
+  
+  .timeline-step.current .timeline-content {
+    background: #e8f4fc;
+    border-left: 3px solid #3498db;
+  }
+  
+  .timeline-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+  }
+  
+  .timeline-content p {
+    margin: 0.2rem 0;
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  .order-sections {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .order-items-section {
+    flex: 2;
+  }
+  
+  .order-info-section {
+    flex: 1;
+  }
+  
+  .order-items {
+    margin: 1rem 0;
+  }
+  
+  .order-item {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+  }
+  
+  .order-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+  
+  .item-details {
+    flex: 1;
+  }
+  
+  .item-details h4 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .completed-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background: #2ecc71;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-left: 1rem;
+  }
+  
+  .order-summary {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 6px;
+  }
+  
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  
+  .summary-row.total {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #ddd;
+  }
+  
+  .shipping-info, .payment-info {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 6px;
+  }
+  
+  .shipping-info h2, .payment-info h2 {
+    margin-top: 0;
+    color: #2c3e50;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+  }
+  
+  .shipping-info p, .payment-info p {
+    margin: 0.5rem 0;
+  }
+  
+  .cancellation-notice {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #fff8e1;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+  }
+  
+  .cancellation-notice h3 {
+    margin-top: 0;
+    color: #ff9800;
+  }
+  
+  .cancel-button {
+    margin-top: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .cancel-button:hover {
+    background: #c0392b;
+  }
+  
+  .tracking-info {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    border-radius: 4px;
+  }
+  
+  .tracking-info h3 {
+    margin-top: 0;
+    color: #2e7d32;
+  }
+  
+  .track-button {
+    margin-top: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .track-button:hover {
+    background: #1b5e20;
+  }
+  
+  @media (max-width: 768px) {
+    .order-sections {
+      flex-direction: column;
+    }
+    
+    .status-timeline::before {
+      left: 15px;
+    }
+    
+    .timeline-step {
+      padding-left: 45px;
+    }
+    
+    .timeline-marker {
+      left: 5px;
+    }
+    
+    .timeline-step.current .timeline-marker {
+      left: 3px;
+    }
+  }
