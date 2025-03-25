@@ -9,6 +9,7 @@ const authenticate = require("../middleware/authenticate");
 router.post("/", authenticate, OrderController.createOrder);
 router.get("/:id", authenticate, OrderController.getOrderById);
 router.get("/user/my-orders", authenticate, OrderController.getUserOrders);
+router.get('/user/history', authenticate, OrderController.getOrderHistory);
 
 // Export
 module.exports = router;

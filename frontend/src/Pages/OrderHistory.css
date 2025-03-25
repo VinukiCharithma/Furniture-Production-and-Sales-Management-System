@@ -1,173 +1,49 @@
 .order-history {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 1rem;
-  }
-  
-  .filters {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .filter-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .filter-group label {
-    font-weight: bold;
-  }
-  
-  .filter-group select {
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-  }
-  
-  .orders-list {
-    margin-top: 1rem;
-  }
-  
-  .order-card {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    cursor: pointer;
-    transition: box-shadow 0.3s;
-  }
-  
-  .order-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .order-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  
-  .order-meta {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    font-size: 0.9rem;
-    color: #666;
-  }
-  
-  .order-preview {
-    display: flex;
-    gap: 1rem;
-    margin: 0.5rem 0;
-    flex-wrap: wrap;
-  }
-  
-  .preview-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .preview-item img {
-    width: 40px;
-    height: 40px;
-    object-fit: cover;
-    border-radius: 4px;
-  }
-  
-  .preview-more {
-    font-size: 0.9rem;
-    color: #666;
-    display: flex;
-    align-items: center;
-  }
-  
-  .order-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #eee;
-  }
-  
-  .order-total {
-    font-weight: bold;
-  }
-  
-  .view-details {
-    background: none;
-    border: 1px solid #3498db;
-    color: #3498db;
-    padding: 0.3rem 0.8rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .view-details:hover {
-    background: #3498db;
-    color: white;
-  }
-  
-  .no-orders {
-    text-align: center;
-    padding: 2rem;
-    color: #666;
-  }
-  
-  .no-orders button {
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-  
-  .no-orders button:hover {
-    background: #2980b9;
-  }
-  
-  .badge {
-    padding: 0.2rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-  
-  .badge-secondary {
-    background: #6c757d;
-    color: white;
-  }
-  
-  .badge-info {
-    background: #17a2b8;
-    color: white;
-  }
-  
-  .badge-primary {
-    background: #007bff;
-    color: white;
-  }
-  
-  .badge-warning {
-    background: #ffc107;
-    color: #212529;
-  }
-  
-  .badge-success {
-    background: #28a745;
-    color: white;
-  }
-  
-  .badge-danger {
-    background: #dc3545;
-    color: white;
-  }
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.orders-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.order-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: transform 0.2s;
+}
+
+.order-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.pagination button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background: #eee;
+  cursor: default;
+}

@@ -1,130 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../Context/AuthContext';
+import { useNavigate } from 'react-router-dom'; // Added this import
+import api from '../utils/api';
 import './OrderHistory.css';
 
 const OrderHistory = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Added this hook
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [sort, setSort] = useState('newest');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 5,
+    totalPages: 1
+  });
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrderHistory = async () => {
       try {
-        const response = await axios.get(`/api/orders/user-orders`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-          params: { status: filter === 'all' ? undefined : filter, sort }
-        });
-        setOrders(response.data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load orders');
+        const response = await api.get(
+          `/orders/user/history?page=${pagination.page}&limit=${pagination.limit}`
+        );
+        
+        setOrders(response.data.orders);
+        setPagination(prev => ({ // Fixed the pagination dependency issue
+          ...prev,
+          totalPages: response.data.totalPages
+        }));
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
-      fetchOrders();
-    } else {
-      navigate('/login');
-    }
-  }, [user, navigate, filter, sort]);
+    if (user) fetchOrderHistory();
+  }, [user, pagination.page, pagination.limit]); // Added pagination.limit for completeness
 
-  const getStatusBadge = (status) => {
-    const statusClasses = {
-      pending: 'badge-secondary',
-      processing: 'badge-info',
-      completed: 'badge-primary',
-      shipped: 'badge-warning',
-      delivered: 'badge-success',
-      cancelled: 'badge-danger'
-    };
-    
-    return <span className={`badge ${statusClasses[status]}`}>{status}</span>;
+  const handlePageChange = (newPage) => {
+    setPagination({ ...pagination, page: newPage });
   };
 
-  if (loading) return <div className="loading">Loading your orders...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (loading) return <div className="loading">Loading order history...</div>;
 
   return (
     <div className="order-history">
-      <h1>Your Orders</h1>
-      
-      <div className="filters">
-        <div className="filter-group">
-          <label>Filter by status:</label>
-          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="all">All Orders</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        
-        <div className="filter-group">
-          <label>Sort by:</label>
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-          </select>
-        </div>
-      </div>
+      <h2>Your Order History</h2>
       
       {orders.length === 0 ? (
-        <div className="no-orders">
-          <p>You haven't placed any orders yet.</p>
-          <button onClick={() => navigate('/products')}>Start Shopping</button>
-        </div>
+        <p>No orders found</p>
       ) : (
-        <div className="orders-list">
-          {orders.map(order => (
-            <div key={order._id} className="order-card" onClick={() => navigate(`/account/orders/${order._id}`)}>
-              <div className="order-header">
-                <h3>Order #{order._id}</h3>
-                <div className="order-meta">
-                  <span>Placed on {new Date(order.createdAt).toLocaleDateString()}</span>
-                  {getStatusBadge(order.status)}
+        <>
+          <div className="orders-list">
+            {orders.map(order => (
+              <div key={order._id} className="order-card">
+                <div className="order-header">
+                  <span>Order #{order._id}</span>
+                  <span>Rs. {order.totalPrice.toFixed(2)}</span>
                 </div>
-              </div>
-              
-              <div className="order-preview">
-                {order.items.slice(0, 2).map(item => (
-                  <div key={item._id} className="preview-item">
-                    <img 
-                      src={item.productId.image || '/placeholder-product.jpg'} 
-                      alt={item.productId.name} 
-                    />
-                    <span>{item.quantity} × {item.productId.name}</span>
-                  </div>
-                ))}
-                {order.items.length > 2 && (
-                  <div className="preview-more">+{order.items.length - 2} more items</div>
-                )}
-              </div>
-              
-              <div className="order-footer">
-                <div className="order-total">Total: Rs. {order.totalPrice.toFixed(2)}</div>
+                
+                <div className="order-details">
+                  <p>Date: {new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p>Status: {order.status}</p>
+                  <p>Items: {order.items.reduce((sum, item) => sum + item.quantity, 0)}</p>
+                </div>
+
                 <button 
-                  className="view-details"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/account/orders/${order._id}`);
-                  }}
+                  onClick={() => navigate(`/orders/${order._id}`)}
+                  className="view-details-btn"
                 >
                   View Details
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          <div className="pagination">
+            {Array.from({ length: pagination.totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => handlePageChange(i + 1)}
+                disabled={pagination.page === i + 1}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

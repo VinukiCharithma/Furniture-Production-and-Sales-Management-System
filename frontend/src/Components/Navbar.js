@@ -16,6 +16,7 @@ const Navbar = () => {
             <li><Link to="/profile">Profile</Link></li>
             <li><Link to="/wishlist">Wishlist</Link></li>
             <li><Link to="/cart">Cart</Link></li>
+            <li><Link to="/orders/history">Order History</Link></li>
             {user?.role === "Admin" && (
               <>
                 <li><Link to="/admin">Admin</Link></li>

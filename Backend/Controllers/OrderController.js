@@ -143,3 +143,34 @@ exports.getUserOrders = async (req, res) => {
     });
   }
 };
+
+// Get paginated order history
+exports.getOrderHistory = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const orders = await Order.find({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('items.productId', 'name image');
+
+    const count = await Order.countDocuments({ userId: req.userId });
+
+    res.json({
+      success: true,
+      orders,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      totalOrders: count
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order history',
+      error: error.message
+    });
+  }
+};
