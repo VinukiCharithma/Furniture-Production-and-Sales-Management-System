@@ -1,157 +1,145 @@
-const Order = require("../Model/OrderModel");
-const Product = require("../Model/ProductModel"); 
+const Order = require('../Model/OrderModel');
+const Cart = require('../Model/CartModel');
+const Product = require('../Model/ProductModel');
 
-// Create Order (OM1) - System calculates total amount
-const createOrder = async (req, res) => {
-    try {
-        const { userId, items } = req.body; // items should contain [{ productId, quantity }]
-        
-        let totalAmount = 0;
-        const detailedItems = [];
+exports.createOrder = async (req, res) => {
+  try {
+    const { items, shippingAddress } = req.body;
+    const userId = req.userId;
 
-        // Fetch product details and calculate total price
-        for (const item of items) {
-            const product = await Product.findById(item.productId);
-            if (!product) {
-                return res.status(404).json({ error: `Product with ID ${item.productId} not found` });
-            }
-            const itemTotal = product.price * item.quantity;
-            totalAmount += itemTotal;
-            detailedItems.push({
-                productId: product._id,
-                name: product.name,
-                price: product.price,
-                quantity: item.quantity,
-                totalPrice: itemTotal
-            });
-        }
-
-        // Create new order
-        const order = new Order({ userId, items: detailedItems, totalAmount });
-        await order.save();
-        res.status(201).json(order);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    // Validate required fields
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Order must contain at least one item" 
+      });
     }
+
+    // Validate shipping address
+    if (!shippingAddress || !shippingAddress.address || !shippingAddress.city || !shippingAddress.postalCode) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Complete shipping address is required" 
+      });
+    }
+
+    // Process items with database validation
+    let totalPrice = 0;
+    const orderItems = [];
+    
+    for (const item of items) {
+      // Validate item structure
+      if (!item.product || !item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: "Each item must contain product and quantity"
+        });
+      }
+
+      // Get product from database
+      const product = await Product.findById(item.product._id || item.product);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `Product not found: ${item.product._id || item.product}`
+        });
+      }
+
+      // Add to order items
+      orderItems.push({
+        productId: product._id,
+        quantity: item.quantity,
+        price: product.price
+      });
+
+      // Calculate total
+      totalPrice += product.price * item.quantity;
+    }
+
+    // Create order
+    const order = new Order({
+      userId,
+      items: orderItems,
+      shippingAddress,
+      paymentMethod: 'cashOnDelivery', // Set default
+      totalPrice,
+      status: 'processing'
+    });
+
+    const createdOrder = await order.save();
+
+    // Clear cart
+    await Cart.findOneAndUpdate(
+      { userId },
+      { $set: { items: [] } }
+    );
+
+    res.status(201).json({
+      success: true,
+      order: createdOrder
+    });
+
+  } catch (error) {
+    console.error('Order creation error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create order',
+      error: error.message 
+    });
+  }
 };
 
-// Get Order by Order ID (OM8) 
-const getOrderById = async (req, res) => {
-    try {
-        const order = await Order.findById(req.params.orderId).populate("userId", "name email");
-        if (!order) {
-            return res.status(404).json({ error: "Order not found" });
-        }
-        res.json(order);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+// Get order by ID
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('items.productId', 'name price image')
+      .lean(); // Convert to plain JavaScript object
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
+      });
     }
+
+    // Ensure userId is included and properly formatted
+    order.userId = order.userId?.toString();
+
+    res.json({
+      success: true,
+      order
+    });
+
+  } catch (error) {
+    console.error('Get order error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch order',
+      error: error.message 
+    });
+  }
 };
 
-// Get User Orders (OM2)
-const getUserOrders = async (req, res) => {
-    try {
-        const orders = await Order.find({ userId: req.params.userId });
-        res.json(orders);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+// Get user orders
+exports.getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.userId })
+      .populate('items.productId', 'name price image')
+      .sort({ createdAt: -1 });
 
-// Update Order Before Processing (OM3)
-const updateOrder = async (req, res) => {
-    try {
-        const { items } = req.body; // items should contain [{ productId, quantity }]
-        
-        let totalAmount = 0;
-        const updatedItems = [];
+    res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
 
-        // Fetch product details and calculate new total price
-        for (const item of items) {
-            const product = await Product.findById(item.productId);
-            if (!product) {
-                return res.status(404).json({ error: `Product with ID ${item.productId} not found` });
-            }
-            const itemTotal = product.price * item.quantity;
-            totalAmount += itemTotal;
-            updatedItems.push({
-                productId: product._id,
-                name: product.name,
-                price: product.price,
-                quantity: item.quantity,
-                totalPrice: itemTotal
-            });
-        }
-
-        // Update order
-        const updatedOrder = await Order.findByIdAndUpdate(
-            req.params.orderId,
-            { items: updatedItems, totalAmount },
-            { new: true }
-        );
-
-        res.json(updatedOrder);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Delete Order Before Processing (OM4)
-const deleteOrder = async (req, res) => {
-    try {
-        await Order.findByIdAndDelete(req.params.orderId);
-        res.json({ message: "Order deleted successfully" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Admin: Get All Orders & Manage (OM5)
-const getAllOrders = async (req, res) => {
-    try {
-        const orders = await Order.find().populate("userId", "name email");
-        res.json(orders);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Update Delivery Status (OM6)
-const updateOrderStatus = async (req, res) => {
-    try {
-        const { status } = req.body;
-        const updatedOrder = await Order.findByIdAndUpdate(
-            req.params.orderId,
-            { status },
-            { new: true }
-        );
-        res.json(updatedOrder);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Generate Order Reports (OM7)
-const generateOrderReports = async (req, res) => {
-    try {
-        const orders = await Order.aggregate([
-            { $group: { _id: "$status", totalSales: { $sum: "$totalAmount" } } },
-        ]);
-        res.json(orders);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-
-
-module.exports = {
-    createOrder,
-    getOrderById, 
-    getUserOrders,
-    updateOrder,
-    deleteOrder,
-    getAllOrders,
-    updateOrderStatus,
-    generateOrderReports,
+  } catch (error) {
+    console.error('Get user orders error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch orders',
+      error: error.message 
+    });
+  }
 };

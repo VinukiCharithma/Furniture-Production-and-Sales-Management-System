@@ -1,49 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../Context/AuthContext';
-import './Checkout.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../Context/AuthContext";
+import api from "../utils/api";
+import "./Checkout.css";
 
 const Checkout = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    address: '',
-    city: '',
-    postalCode: '',
-    paymentMethod: 'cashOnDelivery'
+    name: user?.name || "",
+    email: user?.email || "",
+    address: "",
+    city: "",
+    postalCode: "",
+    paymentMethod: "cashOnDelivery"
   });
-  const navigate = useNavigate();
 
   // Fetch cart data
   useEffect(() => {
     const fetchCart = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+        const response = await api.get(`/cart/${user._id}`);
         setCart(response.data);
-      } catch (error) {
-        setError(error.response?.data?.message || 'Failed to load cart');
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load cart');
       } finally {
         setLoading(false);
       }
     };
 
     if (user) {
-      // Pre-fill user data if available
-      setFormData(prev => ({
-        ...prev,
-        name: user.name,
-        email: user.email
-      }));
       fetchCart();
-    } else {
-      navigate('/login');
     }
-  }, [user, navigate]);
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -53,31 +45,28 @@ const Checkout = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Transform cart items to match backend expectations
+      const orderItems = cart.items.map(item => ({
+        product: item.productId._id, // Send just the product ID
+        quantity: item.quantity
+      }));
+  
       const orderData = {
-        userId: user._id,
-        items: cart.items,
+        items: orderItems, // Use transformed items
         shippingAddress: {
           address: formData.address,
           city: formData.city,
           postalCode: formData.postalCode
-        },
-        paymentMethod: formData.paymentMethod,
-        totalPrice: cart.items.reduce(
-          (sum, item) => sum + (item.productId.price * item.quantity),
-          0
-        )
+        }
+        // paymentMethod is automatically set to 'cashOnDelivery' by backend
       };
-
-      // Create order
-      const response = await axios.post('http://localhost:5000/orders', orderData);
-      
-      // Clear cart after successful order
-      await axios.delete(`http://localhost:5000/cart/${user._id}/clear`);
-      
-      // Redirect to order confirmation
+  
+      const response = await api.post('/orders', orderData);
+      await api.delete(`/cart/${user._id}/clear`);
       navigate(`/order-confirmation/${response.data.order._id}`);
+      
     } catch (error) {
-      setError(error.response?.data?.message || 'Checkout failed. Please try again.');
+      setError(error.response?.data?.message || 'Checkout failed');
     }
   };
 
@@ -168,16 +157,6 @@ const Checkout = () => {
                 onChange={handleInputChange}
               />
               Cash on Delivery
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="card"
-                checked={formData.paymentMethod === 'card'}
-                onChange={handleInputChange}
-              />
-              Credit/Debit Card
             </label>
           </div>
           

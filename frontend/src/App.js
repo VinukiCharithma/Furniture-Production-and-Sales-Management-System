@@ -1,18 +1,19 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./Context/AuthContext"; 
+import { AuthProvider } from "./Context/AuthContext";
 import Home from "./Pages/Home";
 import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import UserProfile from "./Pages/UserProfile";
 import Wishlist from "./Pages/Wishlist";
+import OrderConfirmation from "./Pages/OrderConfirmation";
 import Checkout from "./Pages/Checkout";
 import Cart from "./Pages/Cart";
-import Navbar from "./Components/Navbar"; 
-import ProtectedRoute from "./Components/ProtectedRoute"; 
-import AdminRoute from "./Components/AdminRoute"; 
-import Dashboard from "./Pages/Dashboard"; 
-import AdminDashboard from "./Pages/AdminDashboard"; 
+import Navbar from "./Components/Navbar";
+import ProtectedRoute from "./Components/ProtectedRoute";
+import AdminRoute from "./Components/AdminRoute";
+import Dashboard from "./Pages/Dashboard";
+import AdminDashboard from "./Pages/AdminDashboard";
 import ProductCatalog from "./Pages/ProductCatalog";
 import ProductDetails from "./Pages/ProductDetails";
 
@@ -71,10 +72,17 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-         
+          <Route
+            path="/order-confirmation/:orderId"
+            element={
+              <ProtectedRoute>
+                <OrderConfirmation />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes (Authenticated Admins) */}
-          
+
           <Route
             path="/admin-dashboard"
             element={
@@ -83,7 +91,6 @@ const App = () => {
               </AdminRoute>
             }
           />
-         
         </Routes>
       </AuthProvider>
     </div>

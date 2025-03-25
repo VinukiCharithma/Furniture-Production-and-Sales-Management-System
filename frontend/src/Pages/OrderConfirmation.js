@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
-import './OrderConfirmation.css';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../Context/AuthContext";
+import api from "../utils/api";
+import "./OrderConfirmation.css";
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();
@@ -15,27 +15,48 @@ const OrderConfirmation = () => {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const response = await axios.get(`/api/orders/${orderId}`, {
-          headers: { Authorization: `Bearer ${user.token}` }
-        });
-        setOrder(response.data);
+        const response = await api.get(`/orders/${orderId}`);
+        
+        if (!response?.data) {
+          throw new Error("No order data received from server");
+        }
+
+        // Skip userId check if not available in response
+        if (response.data.order?.userId && user?._id) {
+          if (String(response.data.order.userId) !== String(user._id)) {
+            navigate('/');
+            return;
+          }
+        }
+        
+        setOrder(response.data.order || response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load order details');
+        console.error("Order fetch error:", err);
+        setError(err.response?.data?.message || 
+               err.message || 
+               'Failed to load order details');
+        
+        if (err.response?.status === 401) {
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    if (orderId) {
       fetchOrder();
     } else {
-      navigate('/login');
+      setError("Missing order ID");
+      setLoading(false);
     }
   }, [orderId, user, navigate]);
 
+  // Loading and error states remain the same
   if (loading) return <div className="loading">Loading order details...</div>;
   if (error) return <div className="error">{error}</div>;
   if (!order) return <div className="error">Order not found</div>;
+
 
   return (
     <div className="order-confirmation">
@@ -49,12 +70,8 @@ const OrderConfirmation = () => {
         <div className="order-summary">
           <h2>Order Summary</h2>
           <div className="order-items">
-            {order.items.map(item => (
-              <div key={item._id} className="order-item">
-                <img 
-                  src={item.productId.image || '/placeholder-product.jpg'} 
-                  alt={item.productId.name} 
-                />
+            {order.items.map((item, index) => (
+              <div key={index} className="order-item">
                 <div className="item-details">
                   <h4>{item.productId.name}</h4>
                   <p>Quantity: {item.quantity}</p>
@@ -76,14 +93,13 @@ const OrderConfirmation = () => {
           <p><strong>Address:</strong> {order.shippingAddress.address}</p>
           <p><strong>City:</strong> {order.shippingAddress.city}</p>
           <p><strong>Postal Code:</strong> {order.shippingAddress.postalCode}</p>
-          <p><strong>Payment Method:</strong> {order.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'Credit/Debit Card'}</p>
+          <p><strong>Payment Method:</strong> Cash on Delivery</p>
         </div>
       </div>
       
       <div className="next-steps">
         <h2>What's Next?</h2>
-        <p>You'll receive an email confirmation shortly. We'll notify you when your order ships.</p>
-        <button onClick={() => navigate('/account/orders')}>View All Orders</button>
+        <p>You'll receive an email confirmation shortly.</p>
         <button onClick={() => navigate('/products')}>Continue Shopping</button>
       </div>
     </div>
