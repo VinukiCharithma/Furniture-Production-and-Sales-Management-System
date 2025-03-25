@@ -11,6 +11,7 @@ router.get("/:id", authenticate, OrderController.getOrderById);
 router.get("/user/my-orders", authenticate, OrderController.getUserOrders);
 router.get('/user/history', authenticate, OrderController.getOrderHistory);
 router.put('/:id/cancel', authenticate, OrderController.cancelOrder);
+router.get('/:id/tracking', authenticate, OrderController.getTrackingInfo);
 
 // Export
 module.exports = router;

@@ -212,3 +212,80 @@ exports.cancelOrder = async (req, res) => {
     });
   }
 };
+
+// Get tracking information
+exports.getTrackingInfo = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('items.productId', 'name image')
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
+      });
+    }
+
+    // Verify user owns this order
+    if (order.userId.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view this order'
+      });
+    }
+
+    // Simulate tracking updates (in a real app, integrate with shipping provider API)
+    let trackingUpdates = [];
+    
+    if (order.status === 'shipped' || order.status === 'delivered') {
+      trackingUpdates = [
+        {
+          status: 'processing',
+          location: 'Warehouse',
+          date: order.createdAt,
+          description: 'Order received and being processed'
+        },
+        {
+          status: 'shipped',
+          location: 'Distribution Center',
+          date: order.shippedAt || new Date(order.createdAt.getTime() + 24 * 60 * 60 * 1000),
+          description: 'Order has been shipped'
+        }
+      ];
+
+      if (order.status === 'delivered') {
+        trackingUpdates.push({
+          status: 'delivered',
+          location: order.shippingAddress.city,
+          date: order.deliveredAt,
+          description: 'Order has been delivered'
+        });
+      } else {
+        trackingUpdates.push({
+          status: 'in_transit',
+          location: 'In Transit',
+          date: new Date((order.shippedAt || new Date()).getTime() + 12 * 60 * 60 * 1000),
+          description: 'Package is in transit'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      order,
+      trackingUpdates,
+      estimatedDelivery: order.status === 'shipped' 
+        ? new Date((order.shippedAt || new Date()).getTime() + 3 * 24 * 60 * 60 * 1000)
+        : null
+    });
+
+  } catch (error) {
+    console.error('Tracking error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get tracking information',
+      error: error.message 
+    });
+  }
+};

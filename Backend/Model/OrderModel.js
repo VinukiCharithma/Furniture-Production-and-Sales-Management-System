@@ -30,8 +30,8 @@ const OrderSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: true,
-    default: 'cashOnDelivery', // Set default value
-    enum: ['cashOnDelivery']   // Only allow cashOnDelivery
+    default: 'cashOnDelivery',
+    enum: ['cashOnDelivery']
   },
   totalPrice: {
     type: Number,
@@ -43,7 +43,20 @@ const OrderSchema = new mongoose.Schema({
     default: 'processing',
     enum: ['processing', 'shipped', 'delivered', 'cancelled']
   },
+  // Tracking-related fields
+  shippedAt: {
+    type: Date
+  },
+  trackingNumber: {
+    type: String
+  },
+  carrier: {
+    type: String
+  },
   deliveredAt: {
+    type: Date
+  },
+  cancelledAt: {
     type: Date
   }
 }, {

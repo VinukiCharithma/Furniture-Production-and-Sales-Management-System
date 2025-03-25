@@ -6,7 +6,8 @@ import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import UserProfile from "./Pages/UserProfile";
 import Wishlist from "./Pages/Wishlist";
-import OrderDetails from "./Pages/OrderDetails"; 
+import TrackOrder from "./Pages/TrackOrder";
+import OrderDetails from "./Pages/OrderDetails";
 import OrderHistory from "./Pages/OrderHistory";
 import OrderConfirmation from "./Pages/OrderConfirmation";
 import Checkout from "./Pages/Checkout";
@@ -95,6 +96,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <OrderDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:orderId/tracking"
+            element={
+              <ProtectedRoute>
+                <TrackOrder />
               </ProtectedRoute>
             }
           />
