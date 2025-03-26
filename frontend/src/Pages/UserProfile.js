@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUserById, updateUser } from "../Services/userService";
+import "./UserProfile.css";
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false); // Toggle form visibility
+  const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,7 +29,7 @@ const UserProfile = () => {
         setFormData({
           name: userData.name,
           email: userData.email,
-          password: "", // Keep empty for security
+          password: "",
         });
         setLoading(false);
       } catch (error) {
@@ -64,11 +65,11 @@ const UserProfile = () => {
   }
 
   return (
-    <div>
+    <div className="profile-container">
       <h2>User Profile</h2>
 
       {user && !editMode && (
-        <div>
+        <div className="profile-info">
           <p><strong>Name:</strong> {user.name}</p>
           <p><strong>Email:</strong> {user.email}</p>
           <button onClick={() => setEditMode(true)}>Edit Profile</button>
@@ -76,24 +77,23 @@ const UserProfile = () => {
       )}
 
       {editMode && (
-        <form onSubmit={handleSubmit}>
+        <form className="profile-form" onSubmit={handleSubmit}>
           <label>
             Name:
             <input type="text" name="name" value={formData.name} onChange={handleChange} required />
           </label>
-          <br />
           <label>
             Email:
             <input type="email" name="email" value={formData.email} onChange={handleChange} required />
           </label>
-          <br />
           <label>
             New Password:
             <input type="password" name="password" value={formData.password} onChange={handleChange} />
           </label>
-          <br />
-          <button type="submit">Update</button>
-          <button type="button" onClick={() => setEditMode(false)}>Cancel</button>
+          <div className="form-buttons">
+            <button type="submit">Update</button>
+            <button type="button" onClick={() => setEditMode(false)}>Cancel</button>
+          </div>
         </form>
       )}
     </div>

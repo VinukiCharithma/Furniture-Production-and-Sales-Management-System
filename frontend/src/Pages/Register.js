@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
+import "./Register.css";
 
 const Register = () => {
     const [name, setName] = useState("");
@@ -13,19 +14,18 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
             await register(name, email, password, role);
-            navigate("/dashboard"); // Redirect to dashboard after successful registration
+            navigate("/dashboard");
         } catch (error) {
             setError(error.message || "Registration failed. Please try again.");
         }
     };
 
     return (
-        <div>
+        <div className="register-container">
             <h2>Register</h2>
-            {error && <p style={{ color: "red" }}>{error}</p>}
+            {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <input
                     type="text"

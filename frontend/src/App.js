@@ -17,8 +17,10 @@ import ProtectedRoute from "./Components/ProtectedRoute";
 import AdminRoute from "./Components/AdminRoute";
 import Dashboard from "./Pages/Dashboard";
 import AdminDashboard from "./Pages/AdminDashboard";
+import OrdersManagement from "./Pages/OrdersManagement";
 import ProductCatalog from "./Pages/ProductCatalog";
 import ProductDetails from "./Pages/ProductDetails";
+import "./App.css";
 
 const App = () => {
   return (
@@ -115,6 +117,14 @@ const App = () => {
             element={
               <AdminRoute>
                 <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <AdminRoute>
+                <OrdersManagement  />
               </AdminRoute>
             }
           />

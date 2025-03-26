@@ -289,3 +289,99 @@ exports.getTrackingInfo = async (req, res) => {
     });
   }
 };
+
+// Get all orders (admin)
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { status, sort = '-createdAt', page = 1, limit = 10 } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort,
+      populate: [
+        { path: 'userId', select: 'name email' },
+        { path: 'items.productId', select: 'name price image' }
+      ]
+    };
+    
+    const orders = await Order.paginate(query, options);
+    
+    res.json({
+      success: true,
+      orders: orders.docs,
+      totalPages: orders.totalPages,
+      currentPage: orders.page,
+      totalOrders: orders.totalDocs
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch orders',
+      error: error.message
+    });
+  }
+};
+
+// Update order status (admin)
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action } = req.body;
+    
+    let update = {};
+    let status = '';
+    
+    switch(action) {
+      case 'start-processing':
+        status = 'processing';
+        update = { status, processingStartedAt: new Date() };
+        break;
+      case 'start-shipping':
+        status = 'shipped';
+        update = { 
+          status, 
+          shippedAt: new Date(),
+          trackingNumber: req.body.trackingNumber || `TRACK-${Math.floor(Math.random() * 1000000)}`,
+          carrier: req.body.carrier || 'Standard Shipping'
+        };
+        break;
+      case 'confirm-delivery':
+        status = 'delivered';
+        update = { status, deliveredAt: new Date() };
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid action'
+        });
+    }
+    
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      update,
+      { new: true }
+    ).populate('userId', 'name email');
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update order status',
+      error: error.message
+    });
+  }
+};

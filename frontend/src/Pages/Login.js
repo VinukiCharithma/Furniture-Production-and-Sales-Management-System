@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
+import "./Login.css";
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -11,19 +12,18 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
             await login(email, password);
-            navigate("/dashboard"); // Redirect to dashboard after successful login
+            navigate("/dashboard");
         } catch (error) {
             setError(error.message || "Login failed. Please try again.");
         }
     };
 
     return (
-        <div>
+        <div className="login-container">
             <h2>Login</h2>
-            {error && <p style={{ color: "red" }}>{error}</p>}
+            {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <input
                     type="email"

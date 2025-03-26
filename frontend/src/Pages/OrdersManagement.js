@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth } from '../../Context/AuthContext';
+import { useAuth } from '../Context/AuthContext';
 import './OrdersManagement.css';
 
 const OrdersManagement = () => {
@@ -12,26 +12,29 @@ const OrdersManagement = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     status: '',
-    sort: 'newest',
+    sort: '-createdAt',
     page: 1,
     limit: 10
   });
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState({
+    totalPages: 1,
+    totalOrders: 0
+  });
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('/api/orders', {
+        setLoading(true);
+        const response = await axios.get('/orders', {
           headers: { Authorization: `Bearer ${user.token}` },
-          params: {
-            status: filters.status || undefined,
-            sort: filters.sort,
-            page: filters.page,
-            limit: filters.limit
-          }
+          params: filters
         });
+        
         setOrders(response.data.orders);
-        setTotalPages(response.data.totalPages);
+        setPagination({
+          totalPages: response.data.totalPages,
+          totalOrders: response.data.totalOrders
+        });
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load orders');
       } finally {
@@ -39,7 +42,7 @@ const OrdersManagement = () => {
       }
     };
 
-    if (user && user.isAdmin) {
+    if (user?.isAdmin) {
       fetchOrders();
     } else {
       navigate('/');
@@ -48,31 +51,14 @@ const OrdersManagement = () => {
 
   const handleStatusChange = async (orderId, action) => {
     try {
-      let endpoint = '';
-      let payload = {};
+      const response = await axios.put(
+        `/orders/${orderId}/status`,
+        { action },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
       
-      switch(action) {
-        case 'start-processing':
-          endpoint = `${orderId}/start-processing`;
-          break;
-        case 'start-shipping':
-          endpoint = `${orderId}/start-shipping`;
-          payload = { trackingNumber: `TRACK-${Math.floor(Math.random() * 1000000)}` };
-          break;
-        case 'confirm-delivery':
-          endpoint = `${orderId}/confirm-delivery`;
-          break;
-        default:
-          return;
-      }
-      
-      const response = await axios.put(`/api/orders/${endpoint}`, payload, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      
-      // Update the order in state
       setOrders(orders.map(order => 
-        order._id === orderId ? response.data : order
+        order._id === orderId ? response.data.order : order
       ));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update order');
@@ -92,23 +78,11 @@ const OrdersManagement = () => {
         );
       case 'processing':
         return (
-          <div className="processing-actions">
-            <p>Items to complete: {order.items.filter(i => !i.completed).length}</p>
-            <button 
-              className="action-button complete"
-              onClick={() => navigate(`/admin/orders/${order._id}`)}
-            >
-              Manage Items
-            </button>
-          </div>
-        );
-      case 'completed':
-        return (
           <button 
             className="action-button ship"
             onClick={() => handleStatusChange(order._id, 'start-shipping')}
           >
-            Start Shipping
+            Mark as Shipped
           </button>
         );
       case 'shipped':
@@ -121,7 +95,7 @@ const OrdersManagement = () => {
           </button>
         );
       default:
-        return null;
+        return <span className="no-action">No actions available</span>;
     }
   };
 
@@ -142,7 +116,6 @@ const OrdersManagement = () => {
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
@@ -155,8 +128,8 @@ const OrdersManagement = () => {
             value={filters.sort}
             onChange={(e) => setFilters({ ...filters, sort: e.target.value, page: 1 })}
           >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
+            <option value="-createdAt">Newest First</option>
+            <option value="createdAt">Oldest First</option>
           </select>
         </div>
       </div>
@@ -172,17 +145,15 @@ const OrdersManagement = () => {
         </div>
         
         {orders.length === 0 ? (
-          <div className="no-orders">No orders found matching your criteria</div>
+          <div className="no-orders">No orders found</div>
         ) : (
           orders.map(order => (
             <div key={order._id} className="order-row">
-              <div className="order-id">
-                <span onClick={() => navigate(`/admin/orders/${order._id}`)}>
-                  #{order._id.slice(-6)}
-                </span>
+              <div className="order-id" onClick={() => navigate(`/admin/orders/${order._id}`)}>
+                #{order._id.slice(-6).toUpperCase()}
               </div>
               <div className="customer">
-                {order.userId?.name || 'Unknown'}
+                {order.userId?.name || 'Guest'}
                 <small>{order.userId?.email || ''}</small>
               </div>
               <div className="date">
@@ -202,7 +173,7 @@ const OrdersManagement = () => {
         )}
       </div>
       
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <div className="pagination">
           <button 
             disabled={filters.page === 1}
@@ -210,9 +181,9 @@ const OrdersManagement = () => {
           >
             Previous
           </button>
-          <span>Page {filters.page} of {totalPages}</span>
+          <span>Page {filters.page} of {pagination.totalPages}</span>
           <button 
-            disabled={filters.page === totalPages}
+            disabled={filters.page === pagination.totalPages}
             onClick={() => setFilters({ ...filters, page: filters.page + 1 })}
           >
             Next
