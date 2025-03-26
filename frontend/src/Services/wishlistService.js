@@ -1,14 +1,24 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/wishlists'; // Adjust based on your backend URL
+const API_BASE_URL = 'http://localhost:5000/wishlists';
 
 // Add Item to Wishlist
 export const addItemToWishlist = async (userId, productId) => {
     try {
         const response = await axios.post(`${API_BASE_URL}/`, { userId, productId });
-        return response.data;
+        if (response.data.success) {
+            return {
+                success: true,
+                wishlist: response.data.wishlist,
+                message: response.data.message
+            };
+        }
+        throw new Error(response.data.error || "Failed to add to wishlist");
     } catch (error) {
-        throw error.response?.data || { error: "Failed to add item to wishlist" };
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message || "Failed to add to wishlist"
+        };
     }
 };
 
@@ -16,39 +26,60 @@ export const addItemToWishlist = async (userId, productId) => {
 export const getWishlist = async (userId) => {
     try {
         const response = await axios.get(`${API_BASE_URL}/${userId}`);
-        return response.data;
+        if (response.data.success) {
+            return {
+                success: true,
+                items: response.data.items || [],
+                wishlist: response.data.wishlist || { items: [] }
+            };
+        }
+        throw new Error(response.data.error || "Failed to fetch wishlist");
     } catch (error) {
-        throw error.response?.data || { error: "Failed to fetch wishlist" };
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message || "Failed to fetch wishlist",
+            items: []
+        };
     }
 };
 
-// Update Wishlist
-export const updateWishlist = async (userId, items) => {
-    try {
-        const response = await axios.put(`${API_BASE_URL}/${userId}`, { items });
-        return response.data;
-    } catch (error) {
-        throw error.response?.data || { error: "Failed to update wishlist" };
-    }
-};
-
-// Delete Wishlist Item
-export const deleteWishlistItem = async (userId, productId) => {
+// Remove Item from Wishlist
+export const removeFromWishlist = async (userId, productId) => {
     try {
         const response = await axios.delete(`${API_BASE_URL}/${userId}/${productId}`);
-        return response.data;
+        if (response.data.success) {
+            return {
+                success: true,
+                wishlist: response.data.wishlist,
+                message: response.data.message
+            };
+        }
+        throw new Error(response.data.error || "Failed to remove from wishlist");
     } catch (error) {
-        throw error.response?.data || { error: "Failed to delete item from wishlist" };
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message || "Failed to remove from wishlist"
+        };
     }
 };
 
-// Move Wishlist Item to Cart
+// Move Item to Cart
 export const moveToCart = async (userId, productId) => {
     try {
         const response = await axios.post(`${API_BASE_URL}/move-to-cart/${userId}`, { productId });
-        return response.data;
+        if (response.data.success) {
+            return {
+                success: true,
+                wishlist: response.data.wishlist,
+                message: response.data.message
+            };
+        }
+        throw new Error(response.data.error || "Failed to move to cart");
     } catch (error) {
-        throw error.response?.data || { error: "Failed to move item to cart" };
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message || "Failed to move to cart"
+        };
     }
 };
 
@@ -56,8 +87,18 @@ export const moveToCart = async (userId, productId) => {
 export const clearWishlist = async (userId) => {
     try {
         const response = await axios.delete(`${API_BASE_URL}/${userId}/clear`);
-        return response.data;
+        if (response.data.success) {
+            return {
+                success: true,
+                wishlist: response.data.wishlist,
+                message: response.data.message
+            };
+        }
+        throw new Error(response.data.error || "Failed to clear wishlist");
     } catch (error) {
-        throw error.response?.data || { error: "Failed to clear wishlist" };
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message || "Failed to clear wishlist"
+        };
     }
 };

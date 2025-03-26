@@ -13,6 +13,9 @@ export const AuthProvider = ({ children }) => {
 
     // Check if the user is authenticated
     const isAuthenticated = !!token;
+    
+    // Check if the user is admin
+    const isAdmin = user?.role === "Admin";
 
     // Initialize user data from localStorage
     useEffect(() => {
@@ -83,7 +86,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, login, register, logout }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            token, 
+            isAuthenticated,
+            isAdmin,  // Add this line
+            login, 
+            register, 
+            logout 
+        }}>
             {children}
         </AuthContext.Provider>
     );

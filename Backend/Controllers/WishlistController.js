@@ -2,166 +2,233 @@ const mongoose = require("mongoose");
 const Wishlist = require("../Model/WishlistModel");
 const Product = require("../Model/ProductModel");
 
-// Add Item to Wishlist (WL1)
+// Helper function to validate IDs
+const validateIds = (userId, productId = null) => {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return { valid: false, error: "Invalid user ID" };
+    }
+    if (productId && !mongoose.Types.ObjectId.isValid(productId)) {
+        return { valid: false, error: "Invalid product ID" };
+    }
+    return { valid: true };
+};
+
+// Add Item to Wishlist
 const addItemToWishlist = async (req, res) => {
     try {
         const { userId, productId } = req.body;
+        
+        // Validate IDs
+        const { valid, error } = validateIds(userId, productId);
+        if (!valid) return res.status(400).json({ success: false, error });
 
-        // Validate if product exists
+        // Check if product exists
         const product = await Product.findById(productId);
         if (!product) {
-            return res.status(404).json({ error: "Product not found" });
+            return res.status(404).json({ 
+                success: false,
+                error: "Product not found" 
+            });
         }
 
-        // Add item to wishlist atomically
-        const updatedWishlist = await Wishlist.findOneAndUpdate(
-            { userId, "items.productId": { $ne: productId } }, // Ensure item doesn't already exist
-            { $push: { items: { productId } } }, // Add new item
-            { new: true, upsert: true } // Create wishlist if it doesn't exist
-        );
+        // Check if already in wishlist
+        const existingWishlist = await Wishlist.findOne({ 
+            userId, 
+            "items.productId": productId 
+        });
+        if (existingWishlist) {
+            return res.status(400).json({ 
+                success: false,
+                error: "Product already in wishlist" 
+            });
+        }
 
-        res.json(updatedWishlist);
+        // Add to wishlist
+        const updatedWishlist = await Wishlist.findOneAndUpdate(
+            { userId },
+            { $addToSet: { items: { productId } } },
+            { new: true, upsert: true }
+        ).populate("items.productId", "name price image category");
+
+        res.status(200).json({
+            success: true,
+            message: "Product added to wishlist",
+            wishlist: updatedWishlist,
+            items: updatedWishlist.items
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Wishlist add error:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal server error" 
+        });
     }
 };
 
-// Get Wishlist (WL2) → Auto-populate product details
+// Get User's Wishlist
 const getWishlist = async (req, res) => {
     try {
         const { userId } = req.params;
+        
+        // Validate ID
+        const { valid, error } = validateIds(userId);
+        if (!valid) return res.status(400).json({ success: false, error });
 
-        // Validate userId
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "Invalid User ID" });
-        }
+        const wishlist = await Wishlist.findOne({ userId })
+            .populate("items.productId", "name price image category");
 
-        const wishlist = await Wishlist.findOne({ userId }).populate("items.productId", "name price");
-        if (!wishlist) {
-            return res.status(404).json({ error: "Wishlist not found" });
-        }
-
-        res.json(wishlist);
+        res.status(200).json({
+            success: true,
+            items: wishlist?.items || [],
+            wishlist: wishlist || { items: [] }
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Wishlist fetch error:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal server error" 
+        });
     }
 };
 
-// Update Wishlist (WL3)
-const updateWishlist = async (req, res) => {
-    try {
-        const { items } = req.body;
-        const { userId } = req.params;
-
-        // Validate items array
-        if (!Array.isArray(items)) {
-            return res.status(400).json({ error: "Items must be an array" });
-        }
-
-        // Update wishlist atomically
-        const updatedWishlist = await Wishlist.findOneAndUpdate(
-            { userId },
-            { $set: { items } }, // Replace the entire items array
-            { new: true }
-        );
-
-        if (!updatedWishlist) {
-            return res.status(404).json({ error: "Wishlist not found" });
-        }
-
-        res.json(updatedWishlist);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Delete Wishlist Item (WL4)
-const deleteWishlistItem = async (req, res) => {
+// Remove Item from Wishlist
+const removeFromWishlist = async (req, res) => {
     try {
         const { userId, productId } = req.params;
+        
+        // Validate IDs
+        const { valid, error } = validateIds(userId, productId);
+        if (!valid) return res.status(400).json({ success: false, error });
 
-        // Remove item from wishlist atomically
         const updatedWishlist = await Wishlist.findOneAndUpdate(
             { userId },
-            { $pull: { items: { productId } } }, // Remove the item
+            { $pull: { items: { productId } } },
             { new: true }
-        );
+        ).populate("items.productId", "name price image");
 
         if (!updatedWishlist) {
-            return res.status(404).json({ error: "Wishlist not found" });
+            return res.status(404).json({ 
+                success: false,
+                error: "Wishlist not found" 
+            });
         }
 
-        res.json(updatedWishlist);
+        res.status(200).json({
+            success: true,
+            message: "Item removed from wishlist",
+            wishlist: updatedWishlist,
+            items: updatedWishlist.items
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Wishlist remove error:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal server error" 
+        });
     }
 };
 
-// Move Wishlist to Cart (WL5)
+// Move Item to Cart
 const moveToCart = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
-
+    
     try {
         const { userId } = req.params;
         const { productId } = req.body;
-
-        // Remove item from wishlist atomically
-        const updatedWishlist = await Wishlist.findOneAndUpdate(
-            { userId },
-            { $pull: { items: { productId } } }, // Remove the item
-            { new: true, session }
-        );
-
-        if (!updatedWishlist) {
-            throw new Error("Wishlist not found");
+        
+        // Validate IDs
+        const { valid, error } = validateIds(userId, productId);
+        if (!valid) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ success: false, error });
         }
 
-        // Add item to cart (example logic)
+        // Remove from wishlist
+        const updatedWishlist = await Wishlist.findOneAndUpdate(
+            { userId },
+            { $pull: { items: { productId } } },
+            { new: true, session }
+        ).populate("items.productId", "name price");
+
+        if (!updatedWishlist) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ 
+                success: false,
+                error: "Wishlist not found" 
+            });
+        }
+
+        // Add to cart (implement your cart logic here)
         // await Cart.findOneAndUpdate(
-        //   { userId },
-        //   { $push: { items: { productId } } },
-        //   { new: true, session }
+        //     { userId },
+        //     { $addToSet: { items: { productId, quantity: 1 } } },
+        //     { new: true, upsert: true, session }
         // );
 
         await session.commitTransaction();
         session.endSession();
 
-        res.json({ message: "Item moved to cart", wishlist: updatedWishlist });
+        res.status(200).json({
+            success: true,
+            message: "Item moved to cart",
+            wishlist: updatedWishlist,
+            items: updatedWishlist.items
+        });
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        res.status(500).json({ error: error.message });
+        console.error("Move to cart error:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal server error" 
+        });
     }
 };
 
-// Clear Wishlist (WL6)
+// Clear Wishlist
 const clearWishlist = async (req, res) => {
     try {
         const { userId } = req.params;
+        
+        // Validate ID
+        const { valid, error } = validateIds(userId);
+        if (!valid) return res.status(400).json({ success: false, error });
 
-        // Clear wishlist atomically
         const updatedWishlist = await Wishlist.findOneAndUpdate(
             { userId },
-            { $set: { items: [] } }, // Clear the items array
+            { $set: { items: [] } },
             { new: true }
         );
 
         if (!updatedWishlist) {
-            return res.status(404).json({ error: "Wishlist not found" });
+            return res.status(404).json({ 
+                success: false,
+                error: "Wishlist not found" 
+            });
         }
 
-        res.json({ message: "Wishlist cleared successfully", wishlist: updatedWishlist });
+        res.status(200).json({
+            success: true,
+            message: "Wishlist cleared",
+            wishlist: updatedWishlist,
+            items: updatedWishlist.items
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Clear wishlist error:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal server error" 
+        });
     }
 };
 
 module.exports = {
     addItemToWishlist,
     getWishlist,
-    updateWishlist,
-    deleteWishlistItem,
+    removeFromWishlist,
     moveToCart,
-    clearWishlist,
+    clearWishlist
 };

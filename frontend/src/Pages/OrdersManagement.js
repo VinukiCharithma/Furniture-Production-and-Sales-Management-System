@@ -5,7 +5,7 @@ import { useAuth } from '../Context/AuthContext';
 import './OrdersManagement.css';
 
 const OrdersManagement = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,19 +22,29 @@ const OrdersManagement = () => {
   });
 
   useEffect(() => {
+    // Redirect if not authenticated or not admin
+    if (!isAuthenticated || user?.role !== "Admin") {
+      navigate('/');
+      return;
+    }
+
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/orders', {
+        const response = await axios.get('/api/orders', { // Changed to '/api/orders'
           headers: { Authorization: `Bearer ${user.token}` },
           params: filters
         });
         
-        setOrders(response.data.orders);
-        setPagination({
-          totalPages: response.data.totalPages,
-          totalOrders: response.data.totalOrders
-        });
+        if (response.data.success) {
+          setOrders(response.data.orders);
+          setPagination({
+            totalPages: response.data.totalPages,
+            totalOrders: response.data.totalOrders
+          });
+        } else {
+          setError(response.data.message || 'Failed to load orders');
+        }
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load orders');
       } finally {
@@ -42,24 +52,24 @@ const OrdersManagement = () => {
       }
     };
 
-    if (user?.isAdmin) {
-      fetchOrders();
-    } else {
-      navigate('/');
-    }
-  }, [user, navigate, filters]);
+    fetchOrders();
+  }, [user, navigate, filters, isAuthenticated]);
 
   const handleStatusChange = async (orderId, action) => {
     try {
       const response = await axios.put(
-        `/orders/${orderId}/status`,
+        `/api/orders/${orderId}/status`, // Changed to '/api/orders'
         { action },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       
-      setOrders(orders.map(order => 
-        order._id === orderId ? response.data.order : order
-      ));
+      if (response.data.success) {
+        setOrders(orders.map(order => 
+          order._id === orderId ? response.data.order : order
+        ));
+      } else {
+        setError(response.data.message || 'Failed to update order');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update order');
     }
@@ -71,7 +81,7 @@ const OrdersManagement = () => {
         return (
           <button 
             className="action-button process"
-            onClick={() => handleStatusChange(order._id, 'start-processing')}
+            onClick={() => handleStatusChange(order._id, 'process')}
           >
             Start Processing
           </button>
@@ -80,7 +90,7 @@ const OrdersManagement = () => {
         return (
           <button 
             className="action-button ship"
-            onClick={() => handleStatusChange(order._id, 'start-shipping')}
+            onClick={() => handleStatusChange(order._id, 'ship')}
           >
             Mark as Shipped
           </button>
@@ -89,7 +99,7 @@ const OrdersManagement = () => {
         return (
           <button 
             className="action-button deliver"
-            onClick={() => handleStatusChange(order._id, 'confirm-delivery')}
+            onClick={() => handleStatusChange(order._id, 'deliver')}
           >
             Confirm Delivery
           </button>
@@ -149,7 +159,10 @@ const OrdersManagement = () => {
         ) : (
           orders.map(order => (
             <div key={order._id} className="order-row">
-              <div className="order-id" onClick={() => navigate(`/admin/orders/${order._id}`)}>
+              <div 
+                className="order-id clickable" 
+                onClick={() => navigate(`/admin/orders/${order._id}`)}
+              >
                 #{order._id.slice(-6).toUpperCase()}
               </div>
               <div className="customer">
@@ -163,7 +176,7 @@ const OrdersManagement = () => {
                 {order.status}
               </div>
               <div className="total">
-                Rs. {order.totalPrice.toFixed(2)}
+                Rs. {order.totalPrice?.toFixed(2) || '0.00'}
               </div>
               <div className="actions">
                 {getStatusActions(order)}

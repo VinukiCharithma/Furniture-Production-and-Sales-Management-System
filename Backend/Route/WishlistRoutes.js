@@ -1,13 +1,20 @@
 const express = require("express");
 const router = express.Router();
-
 const WishlistController = require("../Controllers/WishlistController");
 
-router.post("/", WishlistController.addItemToWishlist); // WL1
-router.get("/:userId", WishlistController.getWishlist); // WL2
-router.put("/:userId", WishlistController.updateWishlist); // WL3
-router.delete("/:userId/clear", WishlistController.clearWishlist); // WL6
-router.delete("/:userId/:productId", WishlistController.deleteWishlistItem); // WL4
-router.post("/move-to-cart/:userId", WishlistController.moveToCart); // WL5
+// Add item to wishlist
+router.post("/", WishlistController.addItemToWishlist);
+
+// Get user's wishlist
+router.get("/:userId", WishlistController.getWishlist);
+
+// Remove item from wishlist
+router.delete("/:userId/:productId", WishlistController.removeFromWishlist);
+
+// Move item to cart
+router.post("/move-to-cart/:userId", WishlistController.moveToCart);
+
+// Clear wishlist
+router.delete("/clear/:userId", WishlistController.clearWishlist);
 
 module.exports = router;

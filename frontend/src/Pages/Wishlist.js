@@ -1,103 +1,191 @@
-import React, { useEffect, useState } from "react";
-import {
-    getWishlist,
-    addItemToWishlist,
-    deleteWishlistItem,
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../Context/AuthContext';
+import { 
+    getWishlist, 
+    removeFromWishlist,
     moveToCart,
-    clearWishlist,
-} from "../Services/wishlistService";
+    clearWishlist
+} from '../Services/wishlistService';
+import { Link } from 'react-router-dom';
+import './Wishlist.css';
 
-const Wishlist = ({ userId }) => {
-    const [wishlist, setWishlist] = useState([]);
-    const [newProductId, setNewProductId] = useState("");
-    const [error, setError] = useState("");
+const Wishlist = () => {
+    const { user } = useAuth();
+    const [wishlistItems, setWishlistItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [actionLoading, setActionLoading] = useState({
+        remove: null,
+        move: null,
+        clear: false
+    });
 
-    // Fetch wishlist on component mount
     useEffect(() => {
         const fetchWishlist = async () => {
+            if (!user) return;
+            
             try {
-                const wishlistData = await getWishlist(userId);
-                setWishlist(wishlistData.items || []);
-            } catch (error) {
-                setError(error.error || "Failed to fetch wishlist");
+                setLoading(true);
+                const { success, items, error } = await getWishlist(user._id);
+                
+                if (success) {
+                    setWishlistItems(items);
+                    setError('');
+                } else {
+                    setError(error);
+                }
+            } catch (err) {
+                setError('Failed to load wishlist');
+            } finally {
+                setLoading(false);
             }
         };
+        
         fetchWishlist();
-    }, [userId]);
+    }, [user]);
 
-    // Add item to wishlist
-    const handleAddItem = async () => {
-        if (!newProductId) {
-            setError("Product ID is required");
-            return;
-        }
-        try {
-            const updatedWishlist = await addItemToWishlist(userId, newProductId);
-            setWishlist(updatedWishlist.items);
-            setNewProductId("");
-            setError("");
-        } catch (error) {
-            setError(error.error || "Failed to add item to wishlist");
-        }
-    };
-
-    // Remove item from wishlist
     const handleRemoveItem = async (productId) => {
         try {
-            const updatedWishlist = await deleteWishlistItem(userId, productId);
-            setWishlist(updatedWishlist.items);
-            setError("");
-        } catch (error) {
-            setError(error.error || "Failed to remove item from wishlist");
+            setActionLoading({...actionLoading, remove: productId});
+            const { success, error } = await removeFromWishlist(user._id, productId);
+            
+            if (success) {
+                setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
+            } else {
+                setError(error);
+            }
+        } catch (err) {
+            setError('Failed to remove item');
+        } finally {
+            setActionLoading({...actionLoading, remove: null});
         }
     };
 
-    // Move item to cart
     const handleMoveToCart = async (productId) => {
         try {
-            await moveToCart(userId, productId);
-            const updatedWishlist = await getWishlist(userId);
-            setWishlist(updatedWishlist.items);
-            setError("");
-        } catch (error) {
-            setError(error.error || "Failed to move item to cart");
+            setActionLoading({...actionLoading, move: productId});
+            const { success, error } = await moveToCart(user._id, productId);
+            
+            if (success) {
+                setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
+            } else {
+                setError(error);
+            }
+        } catch (err) {
+            setError('Failed to move item to cart');
+        } finally {
+            setActionLoading({...actionLoading, move: null});
         }
     };
 
-    // Clear wishlist
     const handleClearWishlist = async () => {
         try {
-            await clearWishlist(userId);
-            setWishlist([]);
-            setError("");
-        } catch (error) {
-            setError(error.error || "Failed to clear wishlist");
+            setActionLoading({...actionLoading, clear: true});
+            const { success, error } = await clearWishlist(user._id);
+            
+            if (success) {
+                setWishlistItems([]);
+            } else {
+                setError(error);
+            }
+        } catch (err) {
+            setError('Failed to clear wishlist');
+        } finally {
+            setActionLoading({...actionLoading, clear: false});
         }
     };
 
-    return (
-        <div>
-            <h2>Your Wishlist</h2>
-            {error && <p style={{ color: "red" }}>{error}</p>}
-            <ul>
-                {wishlist.map((item) => (
-                    <li key={item.productId._id}>
-                        {item.productId.name} - ${item.productId.price}
-                        <button onClick={() => handleRemoveItem(item.productId._id)}>Remove</button>
-                        <button onClick={() => handleMoveToCart(item.productId._id)}>Move to Cart</button>
-                    </li>
-                ))}
-            </ul>
-            <div>
-                <input
-                    type="text"
-                    value={newProductId}
-                    onChange={(e) => setNewProductId(e.target.value)}
-                    placeholder="Enter Product ID"
-                />
-                <button onClick={handleAddItem}>Add Item</button>
+    if (!user) {
+        return (
+            <div className="wishlist-container unauthorized">
+                <h2>My Wishlist</h2>
+                <p>Please sign in to view your wishlist</p>
+                <Link to="/login" className="auth-link">Sign In</Link>
             </div>
-            <button onClick={handleClearWishlist}>Clear Wishlist</button>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="wishlist-container loading">
+                <h2>My Wishlist</h2>
+                <div className="spinner"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="wishlist-container">
+            <div className="wishlist-header">
+                <h2>My Wishlist</h2>
+                {wishlistItems.length > 0 && (
+                    <button 
+                        onClick={handleClearWishlist}
+                        disabled={actionLoading.clear}
+                        className="clear-btn"
+                    >
+                        {actionLoading.clear ? 'Clearing...' : 'Clear All'}
+                    </button>
+                )}
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+
+            {wishlistItems.length === 0 ? (
+                <div className="empty-wishlist">
+                    <p>Your wishlist is empty</p>
+                    <Link to="/products" className="browse-btn">
+                        Browse Products
+                    </Link>
+                </div>
+            ) : (
+                <div className="wishlist-items">
+                    {wishlistItems.map((item) => (
+                        <div key={item.productId._id} className="wishlist-item">
+                            <Link 
+                                to={`/products/${item.productId._id}`}
+                                className="product-link"
+                            >
+                                <div className="product-image">
+                                    <img 
+                                        src={item.productId.image || '/placeholder-product.jpg'} 
+                                        alt={item.productId.name}
+                                    />
+                                </div>
+                                <div className="product-info">
+                                    <h3>{item.productId.name}</h3>
+                                    <p className="price">${item.productId.price.toFixed(2)}</p>
+                                    <p className="category">{item.productId.category}</p>
+                                </div>
+                            </Link>
+                            <div className="item-actions">
+                                <button
+                                    onClick={() => handleMoveToCart(item.productId._id)}
+                                    disabled={actionLoading.move === item.productId._id}
+                                    className="move-btn"
+                                >
+                                    {actionLoading.move === item.productId._id ? (
+                                        'Moving...'
+                                    ) : (
+                                        'Move to Cart'
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => handleRemoveItem(item.productId._id)}
+                                    disabled={actionLoading.remove === item.productId._id}
+                                    className="remove-btn"
+                                >
+                                    {actionLoading.remove === item.productId._id ? (
+                                        'Removing...'
+                                    ) : (
+                                        'Remove'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

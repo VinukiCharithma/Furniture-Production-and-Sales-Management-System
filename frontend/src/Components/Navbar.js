@@ -20,20 +20,18 @@ const Navbar = () => {
         </Link>
         
         <div className="navbar-links">
-          <Link to="/products" className="nav-link">Products</Link>
+          <Link to="/products" className="nav-link">Catalog</Link>
           
           {isAuthenticated ? (
             <>
-              {user?.role !== "Admin" && (
+              {user?.role !== "Admin" ? (
                 <>
                   <Link to="/profile" className="nav-link">Profile</Link>
                   <Link to="/wishlist" className="nav-link">Wishlist</Link>
                   <Link to="/cart" className="nav-link">Cart</Link>
-                  <Link to="/orders/history" className="nav-link">OrderHistory</Link>
+                  <Link to="/orders/history" className="nav-link">Order History</Link>
                 </>
-              )}
-              
-              {user?.role === "Admin" && (
+              ) : (
                 <>
                   <Link to="/admin-dashboard" className="nav-link">Dashboard</Link>
                   <Link to="/admin/orders" className="nav-link">Orders</Link>

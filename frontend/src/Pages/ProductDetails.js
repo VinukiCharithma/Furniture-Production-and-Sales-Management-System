@@ -11,6 +11,8 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,11 @@ const ProductDetails = () => {
         setLoading(true);
         const response = await axios.get(`http://localhost:5000/products/${id}`);
         setProduct(response.data.product);
+        
+        if (user) {
+          checkWishlistStatus(user._id, id);
+        }
+        
         setError(null);
       } catch (error) {
         console.error("Error fetching product details:", error);
@@ -29,7 +36,17 @@ const ProductDetails = () => {
     };
   
     fetchProductDetails();
-  }, [id]);
+  }, [id, user]);
+
+  const checkWishlistStatus = async (userId, productId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/wishlist/${userId}`);
+      const inWishlist = response.data.items?.some(item => item.productId._id === productId);
+      setIsInWishlist(inWishlist);
+    } catch (error) {
+      console.error("Error checking wishlist status:", error);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -46,7 +63,7 @@ const ProductDetails = () => {
       alert(`${quantity} ${product.name}(s) added to cart!`);
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert("Failed to add item to cart. Please try again.");
+      alert(error.response?.data?.error || "Failed to add item to cart. Please try again.");
     }
   };
 
@@ -57,69 +74,152 @@ const ProductDetails = () => {
     }
 
     try {
-      // First add to cart
       await axios.post('http://localhost:5000/cart', {
         userId: user._id,
         productId: id,
         quantity: quantity
       });
-      // Then navigate to checkout
       navigate("/checkout");
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert("Failed to proceed to checkout. Please try again.");
+      alert(error.response?.data?.error || "Failed to proceed to checkout. Please try again.");
+    }
+  };
+
+  const handleWishlistAction = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setWishlistLoading(true);
+      if (isInWishlist) {
+        await axios.delete(`http://localhost:5000/wishlist/${user._id}/${id}`);
+        setIsInWishlist(false);
+      } else {
+        await axios.post('http://localhost:5000/wishlist', {
+          userId: user._id,
+          productId: id
+        });
+        setIsInWishlist(true);
+      }
+    } catch (error) {
+      console.error("Error updating wishlist:", error);
+      alert(error.response?.data?.error || "Failed to update wishlist. Please try again.");
+    } finally {
+      setWishlistLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading product details...</div>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading product details...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">{error}</div>;
+    return (
+      <div className="error-container">
+        <div className="error-icon">!</div>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()} className="retry-button">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (!product) {
-    return <div className="not-found">Product not found</div>;
+    return (
+      <div className="not-found-container">
+        <h2>Product Not Found</h2>
+        <p>The product you're looking for doesn't exist or may have been removed.</p>
+        <button onClick={() => navigate('/products')} className="browse-button">
+          Browse Products
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="product-details-container">
       <div className="product-details">
-        <div className="product-image-container">
-          <img 
-            src={product.image || '/placeholder-image.jpg'} 
-            alt={product.name} 
-            className="product-image" 
-          />
-        </div>
-        
         <div className="product-info">
           <h1 className="product-title">{product.name}</h1>
+          {product.brand && <p className="product-brand">By {product.brand}</p>}
           
           <div className="product-meta">
             <p><strong>Category:</strong> {product.category}</p>
-            <p><strong>Material:</strong> {product.material}</p>
+            {product.material && <p><strong>Material:</strong> {product.material}</p>}
             <p className={`availability ${product.availability ? 'in-stock' : 'out-of-stock'}`}>
-              <strong>Availability:</strong> {product.availability ? 'In Stock' : 'Out of Stock'}
+              {product.availability ? 'In Stock' : 'Out of Stock'}
             </p>
+            {product.ratings && (
+              <div className="product-ratings">
+                {[...Array(5)].map((_, i) => (
+                  <span 
+                    key={i} 
+                    className={`star ${i < Math.floor(product.ratings) ? 'filled' : ''}`}
+                  >
+                    ★
+                  </span>
+                ))}
+                <span className="rating-count">({product.ratingCount || 0})</span>
+              </div>
+            )}
           </div>
           
-          <div className="product-price">
-            Rs. {product.price.toFixed(2)}
+          <div className="product-price-container">
+            {product.originalPrice && (
+              <span className="original-price">Rs. {product.originalPrice.toFixed(2)}</span>
+            )}
+            <span className="product-price">Rs. {product.price.toFixed(2)}</span>
+            {product.originalPrice && (
+              <span className="discount-percentage">
+                ({Math.round((1 - product.price / product.originalPrice) * 100)}% OFF)
+              </span>
+            )}
           </div>
+          
+          {product.description && (
+            <div className="product-description">
+              <h3>Description</h3>
+              <p>{product.description}</p>
+            </div>
+          )}
           
           {product.availability && (
             <div className="quantity-selector">
               <label htmlFor="quantity">Quantity:</label>
-              <input
-                type="number"
-                id="quantity"
-                min="1"
-                max="10"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              />
+              <div className="quantity-controls">
+                <button 
+                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  id="quantity"
+                  min="1"
+                  max="10"
+                  value={quantity}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setQuantity(Math.max(1, Math.min(10, value)));
+                  }}
+                />
+                <button 
+                  onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
+                  disabled={quantity >= 10}
+                >
+                  +
+                </button>
+              </div>
             </div>
           )}
           
@@ -141,10 +241,27 @@ const ProductDetails = () => {
               </>
             )}
             <button 
+              className={`wishlist-button ${isInWishlist ? 'in-wishlist' : ''}`}
+              onClick={handleWishlistAction}
+              disabled={wishlistLoading}
+            >
+              {wishlistLoading ? (
+                <span className="spinner"></span>
+              ) : (
+                <>
+                  {isInWishlist ? (
+                    <span>✓ In Wishlist</span>
+                  ) : (
+                    <span>♡ Add to Wishlist</span>
+                  )}
+                </>
+              )}
+            </button>
+            <button 
               className="back-button"
               onClick={() => navigate(-1)}
             >
-              Back to Products
+              ← Back to Products
             </button>
           </div>
         </div>
