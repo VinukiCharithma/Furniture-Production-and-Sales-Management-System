@@ -1,6 +1,7 @@
 // src/components/Alerts.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './Alerts.css'; // Import the CSS file
 
 const Alerts = () => {
     const [delayedTasks, setDelayedTasks] = useState([]);
@@ -19,11 +20,13 @@ const Alerts = () => {
     }, []);
 
     if (delayedTasks.length === 0) {
-        return <div>No delayed tasks.</div>;
+        return <div className="alerts-container">
+            <p className="no-delayed-tasks">No delayed tasks.</p>
+        </div>;
     }
 
     return (
-        <div>
+        <div className="alerts-container">
             <h2>Delayed Tasks</h2>
             <ul>
                 {delayedTasks.map(order => (
@@ -32,9 +35,9 @@ const Alerts = () => {
                         <ul>
                             {order.tasks.map(task => (
                                 <li key={task._id}>
-                                    <p>Task Name: {task.taskName}</p>
-                                    <p>Due Date: {new Date(task.dueDate).toLocaleString()}</p>
-                                    <p>Assigned To: {task.assignedTo?.name || "Not Assigned"}</p>
+                                    <p><strong>Task Name:</strong> {task.taskName}</p>
+                                    <p><strong>Due Date:</strong> {new Date(task.dueDate).toLocaleString()}</p>
+                                    <p><strong>Assigned To:</strong> {task.assignedTo?.name || "Not Assigned"}</p>
                                 </li>
                             ))}
                         </ul>

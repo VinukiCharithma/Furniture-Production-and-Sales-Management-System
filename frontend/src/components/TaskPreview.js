@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import './TaskPreview.css'; // Import the CSS file
 
 const TaskPreview = () => {
     const location = useLocation();
@@ -38,7 +39,7 @@ const TaskPreview = () => {
     };
 
     return (
-        <div>
+        <div className="task-preview-container">
             <h2>Task Preview for Order: {orderId}</h2>
             {console.log('tasks before map:', tasks)} {/* ADDED LOG */}
             {tasks.map((task, index) => (
@@ -69,9 +70,9 @@ const TaskPreview = () => {
                     />
                 </div>
             ))}
-            <p>Total Estimated Time: {totalEstimatedTime}</p>
-            <p>Risk Level: {riskLevel}</p>
-            {suggestedNewDeadline && <p>Suggested New Deadline: {suggestedNewDeadline}</p>}
+            <p><strong>Total Estimated Time:</strong> {totalEstimatedTime} hours</p>
+            <p><strong>Risk Level:</strong> {riskLevel}</p>
+            {suggestedNewDeadline && <p className="suggested-deadline"><strong>Suggested New Deadline:</strong> {suggestedNewDeadline}</p>}
             <button onClick={handleSaveTasks}>Confirm and Save</button>
             {/* You could add a "Back" or "Edit Prompt" button here if needed */}
         </div>

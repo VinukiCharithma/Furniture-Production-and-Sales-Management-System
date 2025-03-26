@@ -1,6 +1,7 @@
 // src/components/CompletedOrders.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './CompletedOrders.css'; // Import the CSS file
 
 const CompletedOrders = () => {
     const [orders, setOrders] = useState([]);
@@ -19,12 +20,17 @@ const CompletedOrders = () => {
     }, []);
 
     return (
-        <div>
+        <div className="completed-orders-container">
             <h2>Completed Orders</h2>
             <ul>
                 {orders.map(order => (
                     <li key={order._id}>
-                        {order.orderId}
+                        <span className="order-id">Order ID:</span> {order.orderId}
+                        {/* You can add more order details here using appropriate CSS classes */}
+                        {/* <div className="order-details">
+                            <p className="other-info">Priority: {order.priorityLevel}</p>
+                            <p className="other-info">...</p>
+                        </div> */}
                     </li>
                 ))}
             </ul>
