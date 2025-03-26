@@ -67,37 +67,42 @@ const OrderDetails = () => {
         setError(null);
         try {
             const updatesToSend = Object.keys(taskStatus)
-                .filter(taskId => {
-                    const originalTask = order?.tasks?.find(task => task._id === taskId);
-                    return originalTask && originalTask.status !== taskStatus[taskId];
-                });
-
-            console.log('updatesToSend array:', updatesToSend); // <--- ADD THIS LINE
-
+            .filter(taskId => {
+                const originalTask = order?.tasks?.find(task => task._id === taskId);
+                return originalTask && originalTask.status !== taskStatus[taskId];
+            });
+    
+            console.log('Tasks to update:', updatesToSend); // Check which task IDs are being considered
+    
             if (updatesToSend.length > 0) {
                 for (const taskId of updatesToSend) {
                     const newStatus = taskStatus[taskId];
+                    console.log(`Attempting to update task ${taskId} to ${newStatus}`); // Log before the update
+    
                     try {
                         const response = await axios.put('/tasks/update-task-progress', { taskId: taskId, status: newStatus });
-                        console.log(`Updated task ${taskId}:`, response?.data);
+                        console.log(`Update response for ${taskId}:`, response?.data);
+    
+                        // After a successful update, you might want to update the local 'order' state
+                        // to reflect the change immediately without a full re-fetch.
+                        setOrder(prevOrder => {
+                            if (!prevOrder || !prevOrder.tasks) return prevOrder;
+                            const updatedTasks = prevOrder.tasks.map(task =>
+                                task._id === taskId ? { ...task, status: newStatus } : task
+                            );
+                            return { ...prevOrder, tasks: updatedTasks };
+                        });
+    
                     } catch (updateError) {
                         console.error(`Error updating task ${taskId}:`, updateError);
                         setError("Failed to update some or all task statuses.");
                         setLoading(false);
-                        return; // Exit if any individual update fails
+                        return; // Stop further updates on the first error for now
                     }
                 }
-
-                // Re-fetch and update state after attempting all updates
-                const fetchResponse = await axios.get(`/tasks/orders`);
-                const updatedOrder = fetchResponse.data.find(o => o._id === id);
-                setOrder(updatedOrder);
-                const newStatusMap = {};
-                updatedOrder?.tasks?.forEach(task => {
-                    newStatusMap[task._id] = task.status;
-                });
-                setTaskStatus(newStatusMap);
+                // If all updates succeed, clear the changed flag and loading state
                 setIsStatusChanged(false);
+                alert("Task status updated successfully!");
             } else {
                 alert("No changes to apply.");
             }

@@ -28,34 +28,33 @@
     padding: 15px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column; /* Arrange details vertically */
+    gap: 8px; /* Space between details */
 }
 
 .completed-orders-container li:last-child {
     margin-bottom: 0;
 }
 
-.completed-orders-container li span {
-    font-weight: bold;
-    margin-right: 10px;
-}
-
-/* You can add more specific styling based on the data you want to display in each list item */
-/* For example, if you want to display more order details: */
-/*
 .completed-orders-container li .order-details {
-    flex-grow: 1;
+    /* No specific styling needed for the container now that items are flex-column */
 }
 
-.completed-orders-container li .order-id {
+.completed-orders-container li .detail-label {
     font-weight: bold;
     color: #555;
-    margin-bottom: 5px;
+    margin-right: 5px; /* Adjust spacing between label and value */
 }
 
-.completed-orders-container li .other-info {
-    color: #777;
-    font-size: 0.9em;
+/* You can add more specific styling if needed for individual details */
+/* For example: */
+/*
+.completed-orders-container li .priority {
+    color: navy;
+}
+
+.completed-orders-container li .estimated-time {
+    font-style: italic;
+    color: green;
 }
 */
