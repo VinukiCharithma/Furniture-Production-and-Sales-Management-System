@@ -21,6 +21,7 @@ import ProductCatalog from "./Pages/ProductCatalog";
 import ProductDetails from "./Pages/ProductDetails";
 import AdminOrders from "./Pages/AdminOrders";
 import AdminOrderDetails from "./Pages/AdminOrderDetails";
+import AdminOrderStats from "./Pages/AdminOrderStats";
 import "./App.css";
 
 const App = () => {
@@ -112,10 +113,34 @@ const App = () => {
           />
 
           {/* Admin Routes (Authenticated Admins) */}
-          <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
-          <Route path="/admin/orders/:orderId" element={<AdminOrderDetails />} />
-          <Route path="/admin-dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-
+          <Route
+            path="/admin/orders"
+            element={
+              <AdminRoute>
+                <AdminOrders />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/orders/:orderId"
+            element={<AdminOrderDetails />}
+          />
+          <Route
+            path="/admin-dashboard"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/stats"
+            element={
+              <AdminRoute>
+                <AdminOrderStats />
+              </AdminRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </div>
