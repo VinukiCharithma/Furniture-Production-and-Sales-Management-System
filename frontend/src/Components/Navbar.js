@@ -4,7 +4,7 @@ import { useAuth } from "../Context/AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -15,28 +15,30 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-brand">
+        <Link to={isAdmin ? "/admin-dashboard" : "/"} className="navbar-brand">
           MyStore
         </Link>
         
         <div className="navbar-links">
-          <Link to="/products" className="nav-link">Catalog</Link>
+          {/* Show Catalog only for non-admin users */}
+          {!isAdmin && <Link to="/products" className="nav-link">Catalog</Link>}
           
           {isAuthenticated ? (
             <>
-              {user?.role !== "Admin" ? (
-                <>
-                  <Link to="/profile" className="nav-link">Profile</Link>
-                  <Link to="/wishlist" className="nav-link">Wishlist</Link>
-                  <Link to="/cart" className="nav-link">Cart</Link>
-                  <Link to="/orders/history" className="nav-link">Order History</Link>
-                </>
-              ) : (
+              {isAdmin ? (
                 <>
                   <Link to="/admin-dashboard" className="nav-link">Dashboard</Link>
                   <Link to="/admin/orders" className="nav-link">Orders</Link>
                   <Link to="/admin/products" className="nav-link">Products</Link>
                   <Link to="/admin/users" className="nav-link">Users</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                  <Link to="/profile" className="nav-link">Profile</Link>
+                  <Link to="/wishlist" className="nav-link">Wishlist</Link>
+                  <Link to="/cart" className="nav-link">Cart</Link>
+                  <Link to="/orders/history" className="nav-link">Order History</Link>
                 </>
               )}
               

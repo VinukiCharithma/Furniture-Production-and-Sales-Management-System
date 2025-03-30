@@ -116,7 +116,10 @@ const OrderHistory = () => {
               <div key={order._id} className="order-card">
                 <div className="order-card-header">
                   <div className="order-meta">
+                  <div className="order-number-user">
                     <h3>Order #{order._id.substring(0, 8).toUpperCase()}</h3>
+                    <span className="order-user">Order by: {user?.name}</span>
+                    </div>
                     <p className="order-date">
                       {new Date(order.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',

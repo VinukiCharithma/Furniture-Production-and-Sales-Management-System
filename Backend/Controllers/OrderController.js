@@ -290,32 +290,33 @@ exports.getTrackingInfo = async (req, res) => {
   }
 };
 
-// Get all orders (admin)
+// Admin: Get all orders
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, sort = '-createdAt', page = 1, limit = 10 } = req.query;
-    
+    const { page = 1, limit = 20, status, sort = '-createdAt' } = req.query;
+    const skip = (page - 1) * limit;
+
     const query = {};
-    if (status) query.status = status;
-    
-    const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      sort,
-      populate: [
-        { path: 'userId', select: 'name email' },
-        { path: 'items.productId', select: 'name price image' }
-      ]
-    };
-    
-    const orders = await Order.paginate(query, options);
-    
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    const orders = await Order.find(query)
+      .populate('userId', 'name email')
+      .populate('items.productId', 'name price image')
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const count = await Order.countDocuments(query);
+
     res.json({
       success: true,
-      orders: orders.docs,
-      totalPages: orders.totalPages,
-      currentPage: orders.page,
-      totalOrders: orders.totalDocs
+      orders,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      totalOrders: count
     });
   } catch (error) {
     res.status(500).json({
@@ -326,53 +327,105 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// Update order status (admin)
+// Admin: Get order statistics
+exports.getOrderStats = async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$totalPrice' },
+          processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
+          shipped: { $sum: { $cond: [{ $eq: ['$status', 'shipped'] }, 1, 0] } },
+          delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalOrders: 1,
+          totalRevenue: 1,
+          statusCounts: {
+            processing: '$processing',
+            shipped: '$shipped',
+            delivered: '$delivered',
+            cancelled: '$cancelled'
+          }
+        }
+      }
+    ]);
+
+    // Get recent 5 orders
+    const recentOrders = await Order.find()
+      .sort('-createdAt')
+      .limit(5)
+      .populate('userId', 'name')
+      .lean();
+
+    res.json({
+      success: true,
+      stats: stats[0] || {
+        totalOrders: 0,
+        totalRevenue: 0,
+        statusCounts: {
+          processing: 0,
+          shipped: 0,
+          delivered: 0,
+          cancelled: 0
+        }
+      },
+      recentOrders
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order statistics',
+      error: error.message
+    });
+  }
+};
+
+// Admin: Update order status
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const { orderId } = req.params;
-    const { action } = req.body;
+    const { status } = req.body;
+    const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
     
-    let update = {};
-    let status = '';
-    
-    switch(action) {
-      case 'start-processing':
-        status = 'processing';
-        update = { status, processingStartedAt: new Date() };
-        break;
-      case 'start-shipping':
-        status = 'shipped';
-        update = { 
-          status, 
-          shippedAt: new Date(),
-          trackingNumber: req.body.trackingNumber || `TRACK-${Math.floor(Math.random() * 1000000)}`,
-          carrier: req.body.carrier || 'Standard Shipping'
-        };
-        break;
-      case 'confirm-delivery':
-        status = 'delivered';
-        update = { status, deliveredAt: new Date() };
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid action'
-        });
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value'
+      });
     }
+
+    const updateData = { status };
     
+    // Add timestamps for specific status changes
+    if (status === 'shipped') {
+      updateData.shippedAt = new Date();
+    } else if (status === 'delivered') {
+      updateData.deliveredAt = new Date();
+    } else if (status === 'cancelled') {
+      updateData.cancelledAt = new Date();
+    }
+
     const order = await Order.findByIdAndUpdate(
-      orderId,
-      update,
+      req.params.id,
+      updateData,
       { new: true }
-    ).populate('userId', 'name email');
-    
+    )
+    .populate('userId', 'name email')
+    .populate('items.productId', 'name price');
+
     if (!order) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
     }
-    
+
     res.json({
       success: true,
       order
@@ -381,6 +434,34 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update order status',
+      error: error.message
+    });
+  }
+};
+
+// Admin: Get order by ID
+exports.getAdminOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('userId', 'name email')
+      .populate('items.productId', 'name price image')
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order',
       error: error.message
     });
   }

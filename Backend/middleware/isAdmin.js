@@ -1,12 +1,19 @@
-// middleware/isAdmin.js
 const isAdmin = (req, res, next) => {
-    if (req.user && req.user.isAdmin) {
-      return next();
-    }
-    return res.status(403).json({
+  if (!req.user) {
+    return res.status(401).json({
       success: false,
-      message: 'Admin access required'
+      message: "Authentication required"
     });
-  };
-  
-  module.exports = isAdmin;
+  }
+
+  if (req.user.role === "Admin") {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: "Admin privileges required"
+  });
+};
+
+module.exports = isAdmin;

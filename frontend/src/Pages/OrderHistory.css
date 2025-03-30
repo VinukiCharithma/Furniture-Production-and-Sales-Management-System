@@ -249,3 +249,27 @@
     margin-top: 10px;
   }
 }
+
+.order-number-user {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.order-number-user h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.order-user {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.order-date {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+

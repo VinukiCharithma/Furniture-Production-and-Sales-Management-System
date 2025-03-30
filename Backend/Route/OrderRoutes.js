@@ -14,9 +14,29 @@ router.get('/user/history', authenticate, OrderController.getOrderHistory);
 router.put('/:id/cancel', authenticate, OrderController.cancelOrder);
 router.get('/:id/tracking', authenticate, OrderController.getTrackingInfo);
 
-// Admin routes
-router.get('/', authenticate, isAdmin, OrderController.getAllOrders);
-router.put('/:orderId/status', authenticate, isAdmin, OrderController.updateOrderStatus);
-
-// Export
-module.exports = router;
+// Admin routes with proper middleware chaining
+router.get("/admin/all-orders", 
+    authenticate, 
+    isAdmin, 
+    OrderController.getAllOrders
+  );
+  
+  router.get("/admin/stats", 
+    authenticate, 
+    isAdmin, 
+    OrderController.getOrderStats
+  );
+  
+  router.put("/admin/:id/update-status", 
+    authenticate, 
+    isAdmin, 
+    OrderController.updateOrderStatus
+  );
+  
+  router.get("/admin/:id", 
+    authenticate, 
+    isAdmin, 
+    OrderController.getAdminOrderById
+  );
+  
+  module.exports = router;
