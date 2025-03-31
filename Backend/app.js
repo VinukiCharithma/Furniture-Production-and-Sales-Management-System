@@ -5,6 +5,8 @@ const mongoose = require("mongoose");
 
 const router = require("./routes/ProductRoute");
 const exportRoutes = require("./routes/exportRoutes");
+const discountRoutes = require('./routes/DiscountRoute');
+const ProductViewRoutes = require('./routes/ProductViewRoutes');
 
 const app = express();
 const cors = require("cors");
@@ -13,7 +15,9 @@ const cors = require("cors");
 //Middleware
 app.use(express.json());
 app.use(cors());
+app.use('/api/discount', discountRoutes);
 app.use('/api',exportRoutes);
+app.use('/api', ProductViewRoutes);
 app.use("/products", router);
 
 
