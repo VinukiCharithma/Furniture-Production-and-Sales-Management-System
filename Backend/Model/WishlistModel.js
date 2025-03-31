@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const wishlistItemSchema = new Schema({
     productId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: "Product", 
+        ref: "ProductModel", 
         required: true 
     },
     addedAt: {
@@ -16,7 +16,7 @@ const wishlistItemSchema = new Schema({
 const wishlistSchema = new Schema({
     userId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: "User", 
+        ref: "UserModel", 
         required: true,
         unique: true 
     },
@@ -36,4 +36,4 @@ wishlistSchema.virtual('itemCount').get(function() {
     return this.items.length;
 });
 
-module.exports = mongoose.model("Wishlist", wishlistSchema);
+module.exports = mongoose.model("WishlistModel", wishlistSchema);
