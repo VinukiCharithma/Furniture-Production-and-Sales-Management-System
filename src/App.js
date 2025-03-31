@@ -1,13 +1,31 @@
+import { Routes, Route } from "react-router-dom";
+import AdminDashboard from "./Components/AdminDashboard";
+import AddProduct from "./Components/Add/AddProduct";
+import EditProduct from "./Components/Update/EditProduct";
+import DiscountManager from "./Components/Discounts/DiscountManager";
+import AdminProductView from "./Components/Admin/AdminProductView";
 
-import './App.css';
 
+import CustomerDashboard from "./Components/Customer/CustomerDashboard";
+import ProductDetails from "./Components/Customer/ProductDetails";
 
 function App() {
   return (
-    <div>
-      
-      <h1>hi</h1>
-    </div>
+    <Routes>
+      {/* Admin Routes */}
+      <Route path="/" element={<AdminDashboard />} />
+        <Route path="/add-product" element={<AddProduct />} />
+        <Route path="/edit-product/:id" element={<EditProduct />} />
+        <Route path="/view-product/:id" element={<AdminProductView />} />
+
+        {/*Discounts*/}
+        <Route path="/manage-discounts" element={<DiscountManager />} /> 
+        
+
+        {/* Customer Routes */}
+        <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+        <Route path="/product-details/:id" element={<ProductDetails />} />
+    </Routes>
   );
 }
 
