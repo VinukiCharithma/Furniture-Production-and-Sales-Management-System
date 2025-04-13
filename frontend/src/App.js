@@ -22,6 +22,7 @@ import ProductDetails from "./Pages/ProductDetails";
 import AdminOrders from "./Pages/AdminOrders";
 import AdminOrderDetails from "./Pages/AdminOrderDetails";
 import AdminOrderStats from "./Pages/AdminOrderStats";
+import AdminUsers from "./Pages/AdminUsers";
 import "./App.css";
 
 const App = () => {
@@ -138,6 +139,14 @@ const App = () => {
             element={
               <AdminRoute>
                 <AdminOrderStats />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsers />
               </AdminRoute>
             }
           />

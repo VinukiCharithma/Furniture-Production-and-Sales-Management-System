@@ -1,82 +1,76 @@
-import axios from "axios";
+import api from '../utils/api';
 
-const API_URL = "http://localhost:5000/users"; 
-
-// Get all users
+// Get all users (admin only)
 export const getAllUsers = async () => {
   try {
-    const response = await axios.get(API_URL);
-    return response.data;
+    const response = await api.get('/users');
+    return response.data.users;
   } catch (error) {
-    console.error("Error fetching users:", error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw new Error('Session expired. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Admin privileges required');
+    }
+    throw new Error('Failed to fetch users');
   }
 };
 
-// Add a new user
+// Add a new user (admin only)
 export const addUser = async (userData) => {
   try {
-    const response = await axios.post(API_URL, userData);
-    return response.data;
+    const response = await api.post('/users', userData);
+    return response.data.user;
   } catch (error) {
-    console.error("Error adding user:", error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw new Error('Session expired. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Admin privileges required');
+    }
+    throw new Error('Failed to add user');
   }
 };
 
 // Get user by ID
 export const getUserById = async (id) => {
   try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No authentication token found");
-
-    const response = await axios.get(`${API_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`/users/${id}`);
     return response.data.user;
   } catch (error) {
-    console.error("Error fetching user by ID:", error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw new Error('Session expired. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Unauthorized access');
+    }
+    throw new Error('Failed to fetch user');
   }
 };
 
 // Update user
 export const updateUser = async (id, userData) => {
   try {
-    const token = localStorage.getItem("token"); // Get auth token
-    const response = await axios.put(`${API_URL}/${id}`, userData, {
-      headers: {
-        Authorization: `Bearer ${token}`, // Send token in request headers
-        "Content-Type": "application/json",
-      },
-    });
-    return response.data;
+    const response = await api.put(`/users/${id}`, userData);
+    return response.data.user;
   } catch (error) {
-    console.error("Error updating user:", error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw new Error('Session expired. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Unauthorized access');
+    }
+    throw new Error('Failed to update user');
   }
 };
 
-// Delete user
+// Delete user (admin only)
 export const deleteUser = async (id) => {
   try {
-    const response = await axios.delete(`${API_URL}/${id}`);
+    const response = await api.delete(`/users/${id}`);
     return response.data;
   } catch (error) {
-    console.error("Error deleting user:", error);
-    throw error;
-  }
-};
-
-// Register user
-export const registerUser = async (userData) => {
-  try {
-    const response = await axios.post(`${API_URL}/register`, userData);
-    return response.data;
-  } catch (error) {
-    console.error("Error registering user:", error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw new Error('Session expired. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Admin privileges required');
+    }
+    throw new Error('Failed to delete user');
   }
 };

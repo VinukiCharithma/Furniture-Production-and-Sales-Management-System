@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userId'); // Add this line
     navigate('/login');
   }, [navigate]);
 
@@ -24,9 +25,10 @@ export const AuthProvider = ({ children }) => {
       
       if (storedToken && storedUser) {
         try {
-          // Verify token is still valid
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          localStorage.setItem('userId', userData._id); // Store user ID
         } catch (error) {
           logout();
         }
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userId', user._id); // Store user ID
       setToken(token);
       setUser(user);
       
@@ -60,6 +63,7 @@ export const AuthProvider = ({ children }) => {
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userId', user._id); // Store user ID
       setToken(token);
       setUser(user);
       

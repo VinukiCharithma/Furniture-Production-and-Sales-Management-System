@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../Context/AuthContext";
 import { getUserById, updateUser } from "../Services/userService";
 import "./UserProfile.css";
 
@@ -12,18 +13,25 @@ const UserProfile = () => {
     email: "",
     password: "",
   });
-
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams();
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      const userId = localStorage.getItem("userId");
-      if (!userId) {
-        navigate("/login");
-        return;
-      }
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
 
+    const fetchUserProfile = async () => {
       try {
+        // Use the ID from URL params or from localStorage
+        const userId = id || localStorage.getItem("userId");
+        if (!userId) {
+          navigate("/login");
+          return;
+        }
+
         const userData = await getUserById(userId);
         setUser(userData);
         setFormData({
@@ -39,7 +47,7 @@ const UserProfile = () => {
     };
 
     fetchUserProfile();
-  }, [navigate]);
+  }, [navigate, isAuthenticated, id]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -47,12 +55,18 @@ const UserProfile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const userId = localStorage.getItem("userId");
-
     try {
+      const userId = id || localStorage.getItem("userId");
       await updateUser(userId, formData);
       alert("Profile updated successfully!");
-      setUser({ ...user, ...formData });
+      
+      // Update local user data if editing own profile
+      if (!id || id === localStorage.getItem("userId")) {
+        const updatedUser = await getUserById(userId);
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
       setEditMode(false);
     } catch (error) {
       alert("Failed to update profile.");
@@ -61,7 +75,7 @@ const UserProfile = () => {
   };
 
   if (loading) {
-    return <p>Loading...</p>;
+    return <div className="loading">Loading profile...</div>;
   }
 
   return (
@@ -72,6 +86,7 @@ const UserProfile = () => {
         <div className="profile-info">
           <p><strong>Name:</strong> {user.name}</p>
           <p><strong>Email:</strong> {user.email}</p>
+          <p><strong>Role:</strong> {user.role}</p>
           <button onClick={() => setEditMode(true)}>Edit Profile</button>
         </div>
       )}
