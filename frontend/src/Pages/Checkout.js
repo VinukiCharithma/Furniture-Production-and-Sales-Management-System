@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 import api from "../utils/api";
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 import "./Checkout.css";
 
 const Checkout = () => {
@@ -16,7 +17,7 @@ const Checkout = () => {
     address: "",
     city: "",
     postalCode: "",
-    paymentMethod: "cashOnDelivery"
+    paymentMethod: "cashOnDelivery",
   });
 
   // Fetch cart data
@@ -26,7 +27,7 @@ const Checkout = () => {
         const response = await api.get(`/cart/${user._id}`);
         setCart(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load cart');
+        setError(err.response?.data?.message || "Failed to load cart");
       } finally {
         setLoading(false);
       }
@@ -39,34 +40,33 @@ const Checkout = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       // Transform cart items to match backend expectations
-      const orderItems = cart.items.map(item => ({
+      const orderItems = cart.items.map((item) => ({
         product: item.productId._id, // Send just the product ID
-        quantity: item.quantity
+        quantity: item.quantity,
       }));
-  
+
       const orderData = {
         items: orderItems, // Use transformed items
         shippingAddress: {
           address: formData.address,
           city: formData.city,
-          postalCode: formData.postalCode
-        }
+          postalCode: formData.postalCode,
+        },
         // paymentMethod is automatically set to 'cashOnDelivery' by backend
       };
-  
-      const response = await api.post('/orders', orderData);
+
+      const response = await api.post("/orders", orderData);
       await api.delete(`/cart/${user._id}/clear`);
       navigate(`/order-confirmation/${response.data.order._id}`);
-      
     } catch (error) {
-      setError(error.response?.data?.message || 'Checkout failed');
+      setError(error.response?.data?.message || "Checkout failed");
     }
   };
 
@@ -76,13 +76,13 @@ const Checkout = () => {
     return (
       <div className="empty-cart">
         <h2>Your cart is empty</h2>
-        <button onClick={() => navigate('/products')}>Continue Shopping</button>
+        <button onClick={() => navigate("/products")}>Continue Shopping</button>
       </div>
     );
   }
 
   const totalPrice = cart.items.reduce(
-    (sum, item) => sum + (item.productId.price * item.quantity),
+    (sum, item) => sum + item.productId.price * item.quantity,
     0
   );
 
@@ -101,7 +101,7 @@ const Checkout = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Email</label>
             <input
@@ -112,7 +112,7 @@ const Checkout = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Address</label>
             <input
@@ -123,7 +123,7 @@ const Checkout = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>City</label>
             <input
@@ -134,7 +134,7 @@ const Checkout = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Postal Code</label>
             <input
@@ -145,7 +145,7 @@ const Checkout = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <h3>Payment Method</h3>
             <label>
@@ -153,31 +153,35 @@ const Checkout = () => {
                 type="radio"
                 name="paymentMethod"
                 value="cashOnDelivery"
-                checked={formData.paymentMethod === 'cashOnDelivery'}
+                checked={formData.paymentMethod === "cashOnDelivery"}
                 onChange={handleInputChange}
               />
               Cash on Delivery
             </label>
           </div>
-          
+
           <button type="submit" className="place-order-btn">
             Place Order
           </button>
         </form>
       </div>
-      
+
       <div className="order-summary">
         <h2>Order Summary</h2>
         <div className="order-items">
-          {cart.items.map(item => (
+          {cart.items.map((item) => (
             <div key={item.productId._id} className="order-item">
-              <img 
-                src={item.productId.image || '/placeholder-image.jpg'} 
-                alt={item.productId.name} 
+              <img
+                src={getProductImageUrl(item.productId?.image)}
+                alt={item.productId?.name || "Product"}
+                onError={handleImageError}
+                className="cart-item-image"
               />
               <div>
                 <h4>{item.productId.name}</h4>
-                <p>Rs. {item.productId.price} × {item.quantity}</p>
+                <p>
+                  Rs. {item.productId.price} × {item.quantity}
+                </p>
               </div>
             </div>
           ))}

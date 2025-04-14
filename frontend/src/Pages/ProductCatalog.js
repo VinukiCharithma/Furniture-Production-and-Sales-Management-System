@@ -70,10 +70,10 @@ const ProductCatalog = () => {
           className="filter-dropdown"
         >
           <option value="">All Categories</option>
-          <option value="living room">Living Room</option>
-          <option value="kitchen">Kitchen</option>
-          <option value="bedroom">Bedroom</option>
-          <option value="office">Office</option>
+          <option value="Furniture">Furniture</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Home Decor">Home Decor</option>
         </select>
       </div>
 
@@ -82,11 +82,20 @@ const ProductCatalog = () => {
         {filteredProducts.length > 0 ? (
           filteredProducts.map((product) => (
             <div key={product._id} className="product-card">
-              <img 
-                src={product.image || '/placeholder-image.jpg'} 
-                alt={product.name} 
-                className="product-image" 
-              />
+              <div className="product-image-container">
+                <img 
+                  src={
+                    product.image 
+                      ? `http://localhost:5000${product.image}` 
+                      : '/images/placeholder-product.jpg'
+                  } 
+                  alt={product.name} 
+                  className="product-image"
+                  onError={(e) => {
+                    e.target.src = '/images/placeholder-product.jpg';
+                  }}
+                />
+              </div>
               <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
                 <p className="product-category">{product.category}</p>
@@ -94,6 +103,7 @@ const ProductCatalog = () => {
                 <p className={`availability ${product.availability ? 'in-stock' : 'out-of-stock'}`}>
                   {product.availability ? 'In Stock' : 'Out of Stock'}
                 </p>
+                <p className="product-material">Material: {product.material}</p>
                 <Link to={`/products/${product._id}`} className="view-details">
                   View Details
                 </Link>

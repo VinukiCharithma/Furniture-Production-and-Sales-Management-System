@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 import "./ProductDetails.css";
 import api from "../utils/api";
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -87,45 +88,45 @@ const ProductDetails = () => {
 
   const checkWishlistStatus = async (userId, productId) => {
     try {
-        const response = await api.get(`/wishlists/user/${userId}`);
-        const inWishlist = response.data.items?.some(
-            (item) => item.productId && item.productId._id === productId
-        );
-        setIsInWishlist(inWishlist);
+      const response = await api.get(`/wishlists/user/${userId}`);
+      const inWishlist = response.data.items?.some(
+        (item) => item.productId && item.productId._id === productId
+      );
+      setIsInWishlist(inWishlist);
     } catch (error) {
-        console.error("Error checking wishlist status:", error);
-        setIsInWishlist(false);
+      console.error("Error checking wishlist status:", error);
+      setIsInWishlist(false);
     }
-};
+  };
 
-const handleWishlistAction = async () => {
+  const handleWishlistAction = async () => {
     if (!user) {
-        navigate("/login");
-        return;
+      navigate("/login");
+      return;
     }
 
     try {
-        setWishlistLoading(true);
-        if (isInWishlist) {
-            await api.delete(`/wishlists/remove/${user._id}/${id}`);
-            setIsInWishlist(false);
-        } else {
-            await api.post("/wishlists/add", {
-                userId: user._id,
-                productId: id,
-            });
-            setIsInWishlist(true);
-        }
+      setWishlistLoading(true);
+      if (isInWishlist) {
+        await api.delete(`/wishlists/remove/${user._id}/${id}`);
+        setIsInWishlist(false);
+      } else {
+        await api.post("/wishlists/add", {
+          userId: user._id,
+          productId: id,
+        });
+        setIsInWishlist(true);
+      }
     } catch (error) {
-        console.error("Error updating wishlist:", error);
-        alert(
-            error.response?.data?.error ||
-                "Failed to update wishlist. Please try again."
-        );
+      console.error("Error updating wishlist:", error);
+      alert(
+        error.response?.data?.error ||
+          "Failed to update wishlist. Please try again."
+      );
     } finally {
-        setWishlistLoading(false);
+      setWishlistLoading(false);
     }
-};
+  };
 
   if (loading) {
     return (
@@ -168,6 +169,14 @@ const handleWishlistAction = async () => {
   return (
     <div className="product-details-container">
       <div className="product-details">
+        <div className="product-image-container">
+          <img
+            src={getProductImageUrl(product.image)}
+            alt={product.name}
+            className="product-main-image"
+            onError={handleImageError}
+          />
+        </div>
         <div className="product-info">
           <h1 className="product-title">{product.name}</h1>
           {product.brand && <p className="product-brand">By {product.brand}</p>}

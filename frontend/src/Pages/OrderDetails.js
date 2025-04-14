@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 import api from "../utils/api";
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 import "./OrderDetails.css";
 
 const OrderDetails = () => {
@@ -107,9 +108,10 @@ const OrderDetails = () => {
             {order.items.map((item) => (
               <div key={item._id || item.productId._id} className="order-item">
                 <img
-                  src={item.productId.image || "/placeholder-product.jpg"}
+                  src={getProductImageUrl(item.productId.image)}
                   alt={item.productId.name}
                   className="product-image"
+                  onError={handleImageError}
                 />
                 <div className="item-details">
                   <h4>{item.productId.name}</h4>

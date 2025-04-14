@@ -3,6 +3,7 @@ import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import './OrderHistory.css';
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 
 const OrderHistory = () => {
   const { user } = useAuth();
@@ -139,10 +140,11 @@ const OrderHistory = () => {
                     <div key={index} className="preview-item">
                       {item.productId?.image && (
                         <img 
-                          src={item.productId.image} 
-                          alt={item.productId.name} 
-                          className="product-thumbnail"
-                        />
+                        src={getProductImageUrl(item.productId?.image)} 
+                        alt={item.productId?.name} 
+                        className="product-thumbnail"
+                        onError={handleImageError}
+                      />
                       )}
                       <span className="item-name">{item.productId?.name}</span>
                       <span className="item-quantity">× {item.quantity}</span>

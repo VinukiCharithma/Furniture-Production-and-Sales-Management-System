@@ -2,13 +2,14 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const path = require("path");
 
 // Import routes
 const authRoutes = require("./Route/AuthRoutes");
 const userRoutes = require("./Route/UserRoutes");
 const orderRoutes = require("./Route/OrderRoutes");
 const wishlistRoutes = require("./Route/WishlistRoutes");
-const productRoutes = require("./Route/ProductRoutes");
+const productRoutes = require("./Route/ProductRoutes"); // Contains upload middleware
 const cartRoutes = require("./Route/CartRoutes");
 
 // Load environment variables
@@ -30,12 +31,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Serve static files from the 'public' directory
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+
 // Routes
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/orders", orderRoutes);
 app.use("/wishlists", wishlistRoutes);
-app.use("/products", productRoutes);
+app.use("/products", productRoutes); // Product routes with upload middleware
 app.use("/cart", cartRoutes);
 
 // Health check endpoint
@@ -46,6 +50,24 @@ app.get("/health", (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // Handle multer file type errors
+  if (err.message === 'Only image files are allowed!') {
+    return res.status(400).json({ 
+      success: false,
+      message: "Invalid file type. Only JPEG, JPG, PNG, and GIF images are allowed."
+    });
+  }
+  
+  // Handle multer file size errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ 
+      success: false,
+      message: "File too large. Maximum size is 5MB."
+    });
+  }
+
+  // Generic error handler
   res.status(500).json({ 
     success: false,
     message: "Internal Server Error",

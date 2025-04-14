@@ -1,136 +1,145 @@
 const Product = require("../Model/ProductModel");
+const fs = require('fs');
+const path = require('path');
 
-//product display
-const getAllProducts = async (reqe, res, next) => {
-  let products;
-
-  //get all products
-
+// Get all products
+const getAllProducts = async (req, res) => {
   try {
-    products = await Product.find();
+    const products = await Product.find();
+    res.status(200).json({ 
+      success: true,
+      products: products.map(product => ({
+        ...product._doc,
+        image: product.image ? `/images/products/${product.image}` : null
+      }))
+    });
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  //product not found
-  if (!products) {
-    return res.status(404).json({ message: "Product not found" });
-  }
-
-  //display all products
-  return res.status(200).json({ products });
 };
 
-//insert products
-const addProduct = async (req, res, next) => {
-  const { name, category, price, material, availability, image } = req.body;
-
-  let product;
-
+// Add new product
+const addProduct = async (req, res) => {
   try {
-    product = new Product({
+    const { name, category, price, material, availability } = req.body;
+    const image = req.file ? req.file.filename : undefined;
+
+    const product = new Product({
       name,
       category,
       price,
       material,
       availability,
-      image,
+      image
     });
+
     await product.save();
+
+    res.status(201).json({ 
+      success: true,
+      product: {
+        ...product._doc,
+        image: product.image ? `/images/products/${product.image}` : null
+      }
+    });
   } catch (err) {
-    console.log(err);
-    return res
-      .status(500)
-      .json({ message: "Server error, unable to add product" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  //unable to add product
-  if (!product) {
-    return res.status(400).json({ message: "Unable to add product" });
-  }
-
-  return res.status(201).json({ product });
 };
 
-//get by id
-const getById = async (req, res, next) => {
-  const id = req.params.id;
-
-  let product;
-
+// Get product by ID
+const getById = async (req, res) => {
   try {
-    product = await Product.findById(id);
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    res.status(200).json({ 
+      success: true,
+      product: {
+        ...product._doc,
+        image: product.image ? `/images/products/${product.image}` : null
+      }
+    });
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  //if product not avaiable
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
-  }
-
-  //if product found
-  return res.status(200).json({ product });
 };
 
-//update product
-const updateProduct = async (req, res, next) => {
-  const id = req.params.id;
-  const { name, category, price, material, availability, image } = req.body;
-
-  let product;
-
+// Update product
+const updateProduct = async (req, res) => {
   try {
-    product = await Product.findByIdAndUpdate(
-      id,
-      { name, category, price, material, availability, image },
-      { new: true } // Returns the updated document
+    const { name, category, price, material, availability } = req.body;
+    const updateData = { name, category, price, material, availability };
+
+    if (req.file) {
+      const product = await Product.findById(req.params.id);
+      if (product.image) {
+        const oldImagePath = path.join(__dirname, '../../public/images/products', product.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+      updateData.image = req.file.filename;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
     );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    res.status(200).json({ 
+      success: true,
+      product: {
+        ...updatedProduct._doc,
+        image: updatedProduct.image ? `/images/products/${updatedProduct.image}` : null
+      }
+    });
   } catch (err) {
-    console.log(err);
-    return res
-      .status(500)
-      .json({ message: "Server error, unable to update product" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  //product not found
-  if (!product) {
-    return res
-      .status(404)
-      .json({ message: "Product not found or update failed" });
-  }
-
-  return res.status(200).json({ product });
 };
-//delete product
-const deleteProduct = async (req, res, next) => {
-  const id = req.params.id;
 
-  let product;
-
+// Delete product
+const deleteProduct = async (req, res) => {
   try {
-    product = await Product.findByIdAndDelete(id);
+    const product = await Product.findByIdAndDelete(req.params.id);
+    
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    if (product.image) {
+      const imagePath = path.join(__dirname, '../../public/images/products', product.image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    res.status(200).json({ 
+      success: true,
+      message: "Product deleted successfully"
+    });
   } catch (err) {
-    console.log(err);
-    return res
-      .status(500)
-      .json({ message: "Server error, unable to delete product" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  //pproduct not found
-  if (!product) {
-    return res
-      .status(404)
-      .json({ message: "Product not found or already deleted" });
-  }
-
-  return res
-    .status(200)
-    .json({ message: "Product deleted successfully", product });
 };
 
-exports.getAllProducts = getAllProducts;
-exports.addProduct = addProduct;
-exports.getById = getById;
-exports.updateProduct = updateProduct;
-exports.deleteProduct = deleteProduct;
+module.exports = {
+  getAllProducts,
+  addProduct,
+  getById,
+  updateProduct,
+  deleteProduct
+};

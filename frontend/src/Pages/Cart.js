@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../Context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 import "./Cart.css";
 
 const Cart = () => {
@@ -13,14 +14,16 @@ const Cart = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
     const fetchCart = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+        const response = await axios.get(
+          `http://localhost:5000/cart/${user._id}`
+        );
         setCart(response.data);
         setError(null);
       } catch (error) {
@@ -37,10 +40,11 @@ const Cart = () => {
   const updateQuantity = async (productId, newQuantity) => {
     try {
       await axios.put(`http://localhost:5000/cart/${user._id}/${productId}`, {
-        quantity: newQuantity
+        quantity: newQuantity,
       });
-      // Refresh cart after update
-      const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      const response = await axios.get(
+        `http://localhost:5000/cart/${user._id}`
+      );
       setCart(response.data);
     } catch (error) {
       console.error("Error updating quantity:", error);
@@ -51,8 +55,9 @@ const Cart = () => {
   const removeItem = async (productId) => {
     try {
       await axios.delete(`http://localhost:5000/cart/${user._id}/${productId}`);
-      // Refresh cart after removal
-      const response = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      const response = await axios.get(
+        `http://localhost:5000/cart/${user._id}`
+      );
       setCart(response.data);
     } catch (error) {
       console.error("Error removing item:", error);
@@ -70,14 +75,8 @@ const Cart = () => {
     }
   };
 
-  if (loading) {
-    return <div className="loading">Loading your cart...</div>;
-  }
-
-  if (error) {
-    return <div className="error">{error}</div>;
-  }
-
+  if (loading) return <div className="loading">Loading your cart...</div>;
+  if (error) return <div className="error">{error}</div>;
   if (!cart || cart.items.length === 0) {
     return (
       <div className="empty-cart">
@@ -91,24 +90,26 @@ const Cart = () => {
   }
 
   const totalPrice = cart.items.reduce(
-    (sum, item) => sum + (item.productId.price * item.quantity),
+    (sum, item) => sum + item.productId.price * item.quantity,
     0
   );
 
   return (
     <div className="cart-container">
       <h2>Your Shopping Cart</h2>
-      
+
       <div className="cart-items">
         {cart.items.map((item) => (
           <div key={item.productId._id} className="cart-item">
-            <div className="item-image">
-              <img 
-                src={item.productId.image || '/placeholder-image.jpg'} 
-                alt={item.productId.name} 
+            <div className="item-image-container">
+              <img
+                src={getProductImageUrl(item.productId?.image)}
+                alt={item.productId?.name || "Product"}
+                onError={handleImageError}
+                className="cart-item-image"
               />
             </div>
-            
+
             <div className="item-details">
               <h3>
                 <Link to={`/products/${item.productId._id}`}>
@@ -116,27 +117,31 @@ const Cart = () => {
                 </Link>
               </h3>
               <p>Price: Rs. {item.productId.price.toFixed(2)}</p>
-              
+
               <div className="quantity-control">
-                <button 
-                  onClick={() => updateQuantity(item.productId._id, item.quantity - 1)}
+                <button
+                  onClick={() =>
+                    updateQuantity(item.productId._id, item.quantity - 1)
+                  }
                   disabled={item.quantity <= 1}
                 >
                   -
                 </button>
                 <span>{item.quantity}</span>
-                <button 
-                  onClick={() => updateQuantity(item.productId._id, item.quantity + 1)}
+                <button
+                  onClick={() =>
+                    updateQuantity(item.productId._id, item.quantity + 1)
+                  }
                 >
                   +
                 </button>
               </div>
-              
+
               <p className="item-total">
                 Total: Rs. {(item.productId.price * item.quantity).toFixed(2)}
               </p>
-              
-              <button 
+
+              <button
                 onClick={() => removeItem(item.productId._id)}
                 className="remove-item"
               >
@@ -146,7 +151,7 @@ const Cart = () => {
           </div>
         ))}
       </div>
-      
+
       <div className="cart-summary">
         <h3>Order Summary</h3>
         <div className="summary-row">
@@ -161,7 +166,7 @@ const Cart = () => {
           <span>Total:</span>
           <span>Rs. {totalPrice.toFixed(2)}</span>
         </div>
-        
+
         <div className="cart-actions">
           <button onClick={clearCart} className="clear-cart">
             Clear Cart
