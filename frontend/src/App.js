@@ -23,6 +23,11 @@ import AdminOrders from "./Pages/AdminOrders";
 import AdminOrderDetails from "./Pages/AdminOrderDetails";
 import AdminOrderStats from "./Pages/AdminOrderStats";
 import AdminUsers from "./Pages/AdminUsers";
+import AdminProduct from "./Pages/AdminProduct";
+import AddProduct from "./Pages/AddProduct";
+import EditProduct from "./Pages/EditProduct";
+import AdminProductView from "./Pages/AdminProductView";
+import DiscountManager from "./Pages/DiscountManager";
 import "./App.css";
 
 const App = () => {
@@ -147,6 +152,46 @@ const App = () => {
             element={
               <AdminRoute>
                 <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/products"
+            element={
+              <AdminRoute>
+                <AdminProduct />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/add-product"
+            element={
+              <AdminRoute>
+                <AddProduct />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/edit-product/:id"
+            element={
+              <AdminRoute>
+                <EditProduct />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/view-product/:id"
+            element={
+              <AdminRoute>
+                <AdminProductView />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/manage-discounts"
+            element={
+              <AdminRoute>
+                <DiscountManager/>
               </AdminRoute>
             }
           />

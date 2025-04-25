@@ -11,6 +11,9 @@ const orderRoutes = require("./Route/OrderRoutes");
 const wishlistRoutes = require("./Route/WishlistRoutes");
 const productRoutes = require("./Route/ProductRoutes"); // Contains upload middleware
 const cartRoutes = require("./Route/CartRoutes");
+const ProductViewRoutes = require('./Route/ProductViewRoutes');
+const discountRoutes = require('./Route/DiscountRoutes');
+const exportRoutes = require("./Route/exportRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -41,6 +44,9 @@ app.use("/orders", orderRoutes);
 app.use("/wishlists", wishlistRoutes);
 app.use("/products", productRoutes); // Product routes with upload middleware
 app.use("/cart", cartRoutes);
+app.use("/api", ProductViewRoutes);
+app.use("/api/discount", discountRoutes);
+app.use("/api",exportRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
