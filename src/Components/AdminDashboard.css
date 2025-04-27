@@ -24,14 +24,14 @@ h1, h2 {
   transition: all 0.3s;
 }
 
-.export-button, .add-discount-button {
+.export-button, .add-discount-button, .generateReportBtn {
   background-color: #007bff;
   color: white;
   width: 220px;
   margin: 10px;
 }
 
-.export-button:hover, .add-discount-button:hover {
+.export-button:hover, .add-discount-button:hover, .generateReportBtn:hover {
   background-color: #0056b3;
 }
 

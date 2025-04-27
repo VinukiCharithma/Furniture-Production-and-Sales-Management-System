@@ -113,6 +113,27 @@ const AdminDashboard = () => {
         }
     };
 
+    const generateProductReport = async () => {
+        try {
+            const response = await axios.get('http://localhost:5001/reports/generate-report', {
+                responseType: 'blob', // Ensures the server responds with a PDF blob
+            });
+    
+            // Handle the file download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'ProductReport.pdf'); // Set the filename for the downloaded file
+            document.body.appendChild(link);
+            link.click(); // Trigger the download
+        } catch (error) {
+            console.error('Error generating the PDF report:', error.response || error.message);
+            alert('Failed to generate product report');
+        }
+    };    
+    
+    
+
     return (
         <div className="dashboard-container">
             <Header />
@@ -132,7 +153,9 @@ const AdminDashboard = () => {
 
             <div className="export-file-button">
                 <button className="export-button" onClick={exportToExcel}>Export to Excel</button>
+                <button className="generateReportBtn" onClick={generateProductReport}>Generate Product Report (PDF)</button>
             </div>
+
 
             <div className="search-filter-container">
                 <input type="text" className="search-input" placeholder="Search products..." value={searchQuery} onChange={handleSearch} />
