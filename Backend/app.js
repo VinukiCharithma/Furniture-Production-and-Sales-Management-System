@@ -7,6 +7,8 @@ const router = require("./routes/ProductRoute");
 const exportRoutes = require("./routes/exportRoutes");
 const discountRoutes = require('./routes/DiscountRoute');
 const ProductViewRoutes = require('./routes/ProductViewRoutes');
+const productReportRoutes = require('./routes/ProductReportRoute');
+const analyticsRoutes = require('./routes/AnalyticsRoutes');
 
 const app = express();
 const cors = require("cors");
@@ -19,8 +21,8 @@ app.use('/api/discount', discountRoutes);
 app.use('/api',exportRoutes);
 app.use('/api', ProductViewRoutes);
 app.use("/products", router);
-
-
+app.use('/reports', productReportRoutes);
+app.use('/analytics', analyticsRoutes);
 
 // Start the server
 app.listen(5002, () => {
