@@ -15,7 +15,7 @@ const DiscountManager = ({ onClose }) => {
   useEffect(() => {
     const fetchDiscounts = async () => {
       try {
-        const response = await fetch('http://localhost:5001/api/discount');
+        const response = await fetch('http://localhost:5000/api/discount');
         if (!response.ok) {
           throw new Error('Failed to fetch discounts');
         }
@@ -52,7 +52,7 @@ const DiscountManager = ({ onClose }) => {
     };
 
     try {
-      const response = await fetch('http://localhost:5001/api/discount/create', {
+      const response = await fetch('http://localhost:5000/api/discount/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(discountData),
@@ -76,7 +76,7 @@ const DiscountManager = ({ onClose }) => {
 
   const handleDeleteDiscount = async (discountId) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/discount/delete/${discountId}`, {
+      const response = await fetch(`http://localhost:5000/api/discount/delete/${discountId}`, {
         method: 'DELETE',
       });
 
@@ -117,7 +117,7 @@ const DiscountManager = ({ onClose }) => {
     };
 
     try {
-      const response = await fetch(`http://localhost:5001/api/discount/update/${selectedDiscount._id}`, {
+      const response = await fetch(`http://localhost:5000/api/discount/update/${selectedDiscount._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(discountData),

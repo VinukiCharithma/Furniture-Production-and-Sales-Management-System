@@ -8,7 +8,7 @@ const deleteProduct = async (id, setProducts) => {
   
   if (isConfirmed) {
     try {
-      await axios.delete(`http://localhost:5001/products/${id}`);
+      await axios.delete(`http://localhost:5000/products/${id}`);
       setProducts(prevProducts => prevProducts.filter(product => product._id !== id));  // Update state after deletion
       alert("Product deleted successfully!");
     } catch (error) {

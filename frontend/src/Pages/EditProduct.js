@@ -20,7 +20,7 @@ const EditProduct = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`http://localhost:5001/products/${id}`);
+        const response = await axios.get(`http://localhost:5000/products/${id}`);
         if (response.data) {
           setProductData(response.data); // Update state when the data is fetched
         }
@@ -50,7 +50,7 @@ const EditProduct = () => {
       };
 
       const response = await axios.put(
-        `http://localhost:5001/products/${id}`,
+        `http://localhost:5000/products/${id}`,
         updatedProduct
       );
       console.log("Product updated successfully:", response.data);
