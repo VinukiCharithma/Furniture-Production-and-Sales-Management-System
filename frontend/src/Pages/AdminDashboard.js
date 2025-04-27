@@ -24,6 +24,10 @@ const AdminDashboard = () => {
             <h2>Order Statistics</h2>
             <p>View sales and order analytics</p>
           </Link>
+          <Link to="/admin/inventory" className="admin-card">
+            <h2>Manage Inventory</h2>
+            <p>View and manage stock</p>
+          </Link>
         </div>
       </div>
     </div>

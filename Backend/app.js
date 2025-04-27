@@ -14,6 +14,7 @@ const cartRoutes = require("./Route/CartRoutes");
 const ProductViewRoutes = require('./Route/ProductViewRoutes');
 const discountRoutes = require('./Route/DiscountRoutes');
 const exportRoutes = require("./Route/exportRoutes");
+const router = require("./Route/InventoryRoute");
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +48,7 @@ app.use("/cart", cartRoutes);
 app.use("/api", ProductViewRoutes);
 app.use("/api/discount", discountRoutes);
 app.use("/api",exportRoutes);
+app.use("/inventory",router);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

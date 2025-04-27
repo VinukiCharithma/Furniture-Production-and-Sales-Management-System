@@ -28,6 +28,9 @@ import AddProduct from "./Pages/AddProduct";
 import EditProduct from "./Pages/EditProduct";
 import AdminProductView from "./Pages/AdminProductView";
 import DiscountManager from "./Pages/DiscountManager";
+import AdminInventory from "./Pages/AdminInventory";
+import AddInventory from "./Pages/AddInventory";
+import UpdateInventory from "./Pages/UpdateInventory"
 import "./App.css";
 
 const App = () => {
@@ -192,6 +195,30 @@ const App = () => {
             element={
               <AdminRoute>
                 <DiscountManager/>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/inventory"
+            element={
+              <AdminRoute>
+                <AdminInventory/>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/add-inventory"
+            element={
+              <AdminRoute>
+                <AddInventory/>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/update-inventory/:id"
+            element={
+              <AdminRoute>
+                <UpdateInventory/>
               </AdminRoute>
             }
           />
