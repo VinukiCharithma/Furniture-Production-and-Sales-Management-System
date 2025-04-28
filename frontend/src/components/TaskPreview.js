@@ -1,120 +1,80 @@
+// src/components/TaskPreview.js
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './TaskPreview.css';
+import './TaskPreview.css'; // Import the CSS file
 
 const TaskPreview = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { state } = location;
-    
-    console.log('Full location.state:', location.state);
-    
-    // Proper destructuring with defaults
-    const { 
-        tasks: responseData = {}, 
-        orderId, 
-        orderDetails = {} 
-    } = state || {};
-
-    // Initialize state properly
-    const [tasks, setTasks] = useState(responseData.tasks?.tasks || []);
-    const [totalEstimatedTime, setTotalEstimatedTime] = useState(responseData.totalEstimatedTime || 0);
-    const [riskLevel] = useState(responseData.riskLevel || 'Medium');
-    const [isSaving, setIsSaving] = useState(false);
+    console.log('location.state in TaskPreview:', state); // LOG
+    const { tasks: responseTasks, orderId: initialOrderId } = state || { tasks: { tasks: [] }, orderId: null };
+    const initialTasks = responseTasks?.tasks;
+    console.log('initialTasks in TaskPreview:', initialTasks); // LOG
+    const [tasks, setTasks] = useState(initialTasks?.tasks || []);
+    console.log('tasks state in TaskPreview:', tasks); // ADDED LOG
+    const [totalEstimatedTime, setTotalEstimatedTime] = useState(responseTasks?.totalEstimatedTime || 0);
+    const [riskLevel, setRiskLevel] = useState(responseTasks?.riskLevel || 'Medium');
+    const [suggestedNewDeadline, setSuggestedNewDeadline] = useState(responseTasks?.suggestedNewDeadline);
+    const orderId = initialOrderId;
 
     const handleTaskChange = (index, field, value) => {
         const newTasks = [...tasks];
         newTasks[index][field] = value;
         setTasks(newTasks);
-        
         if (field === 'estimatedTime') {
-            // Fixed the reduce function syntax
-            const newTotal = newTasks.reduce(
-                (sum, task) => sum + (Number(task.estimatedTime) || 0,
-                0
-            ));
-            setTotalEstimatedTime(newTotal);
+            const newTotalTime = newTasks.reduce((sum, task) => sum + parseFloat(task.estimatedTime || 0), 0);
+            setTotalEstimatedTime(newTotalTime);
         }
     };
 
     const handleSaveTasks = async () => {
-        setIsSaving(true);
         try {
-            const response = await axios.post('/tasks/schedule', {
-                orderId,
-                tasks: { tasks },
-                totalEstimatedTime,
-                riskLevel
-            });
-
-            if (response.status === 201) {
-                navigate('/ongoing');
-            } else {
-                console.error('Unexpected response:', response);
-                alert('Failed to save tasks');
-            }
+            await axios.post('/tasks/schedule', { orderId, priorityLevel: "Medium", tasks: { tasks }, totalEstimatedTime, riskLevel, suggestedNewDeadline });
+            navigate('/ongoing');
         } catch (error) {
-            console.error('Save error:', error);
-            alert(`Error saving tasks: ${error.response?.data?.message || error.message}`);
-        } finally {
-            setIsSaving(false);
+            console.error("Error saving tasks:", error);
         }
     };
 
     return (
         <div className="task-preview-container">
             <h2>Task Preview for Order: {orderId}</h2>
-            
-            {/* Order Summary */}
-            <div className="order-summary">
-                <h3>Order Details</h3>
-                <p><strong>Customer:</strong> {orderDetails.customer}</p>
-                <p><strong>Items:</strong></p>
-                <ul>
-                    {orderDetails.items?.map((item, i) => (
-                        <li key={i}>{item.quantity}x {item.name}</li>
-                    ))}
-                </ul>
-                <p><strong>Shipping to:</strong> {orderDetails.address?.city}</p>
-            </div>
-
-            {/* Task Editing */}
-            <div className="task-editor">
-                <h3>Generated Tasks</h3>
-                {tasks.map((task, index) => (
-                    <div key={index} className="task-item">
-                        <div className="form-group">
-                            <label>Task Name</label>
-                            <input
-                                value={task.taskName || ''}
-                                onChange={(e) => handleTaskChange(index, 'taskName', e.target.value)}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Estimated Time (hours)</label>
-                            <input
-                                type="number"
-                                value={task.estimatedTime || ''}
-                                onChange={(e) => handleTaskChange(index, 'estimatedTime', e.target.value)}
-                            />
-                        </div>
-                        {/* Add other task fields as needed */}
-                    </div>
-                ))}
-            </div>
-
-            <div className="summary">
-                <p><strong>Total Estimated Time:</strong> {totalEstimatedTime} hours</p>
-                <p><strong>Risk Level:</strong> {riskLevel}</p>
-            </div>
-
-            <button 
-                onClick={handleSaveTasks}
-                disabled={isSaving}
-            >
-                {isSaving ? 'Saving...' : 'Confirm and Save'}
-            </button>
+            {console.log('tasks before map:', tasks)} {/* ADDED LOG */}
+            {tasks.map((task, index) => (
+                <div key={index}>
+                    <label>Task Name:</label>
+                    <input
+                        type="text"
+                        value={task.taskName}
+                        onChange={(e) => handleTaskChange(index, 'taskName', e.target.value)}
+                    />
+                    <label>Assigned To:</label>
+                    <input
+                        type="text"
+                        value={task.assignedTo || ''}
+                        onChange={(e) => handleTaskChange(index, 'assignedTo', e.target.value)}
+                    />
+                    <label>Estimated Time (hours):</label>
+                    <input
+                        type="number"
+                        value={task.estimatedTime}
+                        onChange={(e) => handleTaskChange(index, 'estimatedTime', parseFloat(e.target.value))}
+                    />
+                    <label>Due Date:</label>
+                    <input
+                        type="date"
+                        value={task.dueDate ? task.dueDate.substring(0, 10) : ''}
+                        onChange={(e) => handleTaskChange(index, 'dueDate', e.target.value + 'T00:00:00Z')}
+                    />
+                </div>
+            ))}
+            <p><strong>Total Estimated Time:</strong> {totalEstimatedTime} hours</p>
+            <p><strong>Risk Level:</strong> {riskLevel}</p>
+            {suggestedNewDeadline && <p className="suggested-deadline"><strong>Suggested New Deadline:</strong> {suggestedNewDeadline}</p>}
+            <button onClick={handleSaveTasks}>Confirm and Save</button>
+            {/* You could add a "Back" or "Edit Prompt" button here if needed */}
         </div>
     );
 };
