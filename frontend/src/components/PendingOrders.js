@@ -11,18 +11,26 @@ const PendingOrders = () => {
     const [deadlineError, setDeadlineError] = useState('');
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const response = await axios.get('/tasks/orders');
-                setOrders(response.data.filter(order => order.customerApproval === "Pending"));
-            } catch (error) {
-                console.error("Error fetching orders:", error);
-            }
-        };
+    // Modify your useEffect in PendingOrders.js
+useEffect(() => {
+    const fetchOrders = async () => {
+        try {
+            // First sync with order system
+            await axios.get('/tasks/sync-orders');
+            
+            // Then fetch pending orders
+            const response = await axios.get('/tasks/orders');
+            setOrders(response.data.filter(order => 
+                order.customerApproval === "Pending" && 
+                order.originalOrderStatus === "processing"
+            ));
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+        }
+    };
 
-        fetchOrders();
-    }, []);
+    fetchOrders();
+}, []);
 
     const getTwoWeeksFromNow = () => {
         const now = new Date();
@@ -43,46 +51,54 @@ const PendingOrders = () => {
     };
 
     const handleGenerateTasks = async (orderId) => {
-        const selectedDeadline = new Date(deadline);
-        const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-
         if (!deadline) {
             setDeadlineError('Please select a deadline.');
             return;
         }
-
+    
+        const selectedDeadline = new Date(deadline);
+        const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    
         if (selectedDeadline < twoWeeksFromNow) {
-            setDeadlineError('Deadline must be at least two weeks from the current time.');
+            setDeadlineError('Deadline must be at least two weeks from now.');
             return;
         }
-
-        console.log('Generate Tasks clicked for:', orderId);
-        const orderToProcess = orders.find(order => order.orderId === orderId);
-        if (!orderToProcess) {
-            console.error(`Order with ID ${orderId} not found.`);
-            return;
-        }
-        console.log('Order to process:', orderToProcess);
-
+    
         try {
-            console.log('Sending data:', { orderId: orderId, orderData: orderToProcess, deadline: deadline });
+            console.log('Attempting to generate tasks for order:', orderId);
+            
+            // Add loading state
+            
             const response = await axios.post('/tasks/preview-tasks', {
                 orderId: orderId,
-                orderData: orderToProcess,
-                deadline: deadline,
+                deadline: deadline
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
-            console.log('Response from /preview-tasks:', response.data);
-            console.log('Response data before navigation:', response.data); // ADDED LOG
-            navigate('/taskpreview', { state: { tasks: response.data, orderId: orderId } });
-            console.log('Navigated to /taskpreview');
-        } catch (error) {
-            console.error("Error generating tasks:", error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setDeadlineError(error.response.data.message); // Display backend validation errors
-            } else {
-                setDeadlineError('Failed to generate tasks. Please try again.');
+    
+            console.log('Full response:', response);
+    
+            if (!response.data?.tasks) {
+                throw new Error("No tasks data in response");
             }
-        }
+    
+            navigate('/taskpreview', {
+                state: {
+                    tasks: response.data,
+                    orderId: orderId,
+                    orderDetails: response.data.orderSnapshot || {}
+                }
+            });
+    
+        } catch (error) {
+            console.error("Full error:", error);
+            console.error("Error response:", error.response?.data);
+            setDeadlineError(error.response?.data?.message || 
+                            error.message || 
+                            "Failed to generate tasks");
+        } 
     };
 
     return (

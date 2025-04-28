@@ -1,6 +1,9 @@
 const Task = require("../Model/TaskModel");
 const Emp = require("../Model/EmpModel");
 const AI = require("../Utils/taskAI");
+const OrderIntegration = require("../services/OrderIntegration");
+const Order = require("../Model/OrderModel"); // Add this at top
+const Product = require("../Model/ProductModel");
 
 // 1️⃣ Fetch all orders sorted by priority
 const getOrdersByPriority = async (req, res, next) => {
@@ -14,33 +17,67 @@ const getOrdersByPriority = async (req, res, next) => {
 
 //  2️⃣ Preview AI-generated tasks before saving
 const previewTaskSchedule = async (req, res, next) => {
-    const { orderId, orderData, deadline } = req.body;
+    const { orderId, deadline } = req.body;
 
     try {
-        // Extract relevant information from orderData to use as requirements
-        let requirements = `Order ID: ${orderId}\n`;
-        for (const key in orderData) {
-            if (orderData.hasOwnProperty(key) && key !== '_id' && key !== '__v' && key !== 'tasks' && key !== 'totalEstimatedTime' && key !== 'progress' && key !== 'dispatchStatus') {
-                requirements += `${key}: ${orderData[key]}\n`;
-            }
+        // 1. Fetch complete order data
+        const order = await Order.findById(orderId)
+            .populate('userId')
+            .populate('items.productId');
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        const aiResponse = await AI.generateTasks({ requirements: requirements, deadline });
+        // 2. Prepare requirements string
+        const requirements = `
+            ORDER DETAILS:
+            - Customer: ${order.userId.name}
+            - Shipping to: ${order.shippingAddress.city}
+            - Items:
+            ${order.items.map(item => 
+                `  • ${item.quantity}x ${item.productId.name}`
+            ).join('\n')}
+            - Total Price: $${order.totalPrice}
+            - Deadline: ${new Date(deadline).toLocaleDateString()}
+        `;
+
+        console.log("Generated Requirements:", requirements);
+
+        // 3. Generate tasks with AI
+        const aiResponse = await AI.generateTasks({ 
+            requirements, 
+            deadline 
+        });
 
         if (!aiResponse) {
-            return res.status(500).json({ message: "AI task generation failed." });
+            throw new Error("AI generation returned no response");
         }
 
-        return res.status(200).json({
-            message: "AI-generated tasks ready for review.",
-            tasks: aiResponse.tasks,
+        // 4. Prepare response with order context
+        res.status(200).json({
+            message: "Tasks generated successfully",
+            tasks: {  // <-- This should be an object with a tasks array
+                tasks: aiResponse.tasks  
+            },
             totalEstimatedTime: aiResponse.totalEstimatedTime,
             riskLevel: aiResponse.riskLevel,
-            suggestedNewDeadline: aiResponse.suggestedNewDeadline || null
+            orderSnapshot: {
+                customer: order.userId.name,
+                items: order.items.map(item => ({
+                    name: item.productId.name,
+                    quantity: item.quantity
+                })),
+                address: order.shippingAddress
+            }
         });
 
     } catch (error) {
-        next(error);
+        console.error("Error in previewTaskSchedule:", error);
+        res.status(500).json({ 
+            message: "Failed to generate tasks",
+            details: error.message 
+        });
     }
 };
 
@@ -58,28 +95,56 @@ const saveTaskSchedule = async (req, res, next) => {
     const { orderId, tasks, totalEstimatedTime, riskLevel, suggestedNewDeadline } = req.body;
 
     try {
-        // Update the existing order document
-        const updatedOrder = await Task.findOneAndUpdate(
-            { orderId: orderId, customerApproval: "Pending" },
-            {
-                customerApproval: "Approved", // Or whatever the 'ongoing' approval status is
-                productionStatus: "Processing", // Example: set a production status
-                tasks: tasks.tasks,
-                totalEstimatedTime: totalEstimatedTime,
-                riskLevel: riskLevel,
-                suggestedNewDeadline: suggestedNewDeadline || null,
-            },
-            { new: true }
-        );
-
-        if (!updatedOrder) {
-            return res.status(404).json({ message: `Pending order with ID ${orderId} not found.` });
+        // 1. Verify the original order exists in OrderModel
+        const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ 
+                message: `Order with ID ${orderId} not found in OrderModel` 
+            });
         }
 
-        return res.status(200).json({ message: "Order updated to ongoing with generated tasks.", updatedOrder });
+        // 2. Verify order is in processing state
+        if (order.status !== "processing") {
+            return res.status(400).json({ 
+                message: `Order ${orderId} is not in processing state (current status: ${order.status})` 
+            });
+        }
+
+        // 3. Create new task document in TaskModel
+        const newTask = new Task({
+            orderId: order._id, // Reference to OrderModel
+            priorityLevel: "Medium",
+            tasks: tasks.tasks,
+            totalEstimatedTime: totalEstimatedTime,
+            riskLevel: riskLevel,
+            customerApproval: "Approved",
+            progress: 0,
+            dispatchStatus: false,
+            originalOrder: order._id,
+            suggestedNewDeadline: suggestedNewDeadline || null
+        });
+
+        // 4. Save to TaskModel
+        const savedTask = await newTask.save();
+
+        return res.status(201).json({ 
+            message: "New production task schedule created",
+            task: savedTask,
+            originalOrder: { // Include minimal order info for reference
+                id: order._id,
+                status: order.status,
+                customer: order.userId 
+            }
+        });
 
     } catch (error) {
-        console.error("Error updating order:", error);
+        console.error("Error in saveTaskSchedule:", error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                message: "Validation error creating task",
+                details: error.errors 
+            });
+        }
         next(error);
     }
 };
@@ -155,12 +220,38 @@ const updateTaskProgress = async (req, res, next) => {
         taskSchedule.tasks = updatedTasks;
         await taskSchedule.save();
 
+        // After updating task status, check if all tasks are completed
+        const allTasksCompleted = updatedTasks.every(task => task.status === "Completed");
+
+        if (allTasksCompleted) {
+            // Update the original order status
+            await OrderIntegration.updateOrderProgress(taskSchedule.orderId, "shipped");
+            
+            // Also update task schedule
+            taskSchedule.progress = 100;
+            taskSchedule.dispatchStatus = true;
+            await taskSchedule.save();
+        }    
+
         return res.status(200).json({ message: "Task status updated.", taskSchedule });
     } catch (error) {
         next(error);
     }
 };
 
+// New endpoint to sync with orders
+const syncWithOrders = async (req, res, next) => {
+    try {
+        const result = await OrderIntegration.syncProcessingOrders();
+        return res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+exports.syncWithOrders = syncWithOrders;
 exports.getOrdersByPriority = getOrdersByPriority;
 exports.previewTaskSchedule = previewTaskSchedule;
 exports.saveTaskSchedule = saveTaskSchedule;

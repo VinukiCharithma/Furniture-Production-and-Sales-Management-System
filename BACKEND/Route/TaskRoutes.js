@@ -16,5 +16,6 @@ router.get("/delays", TaskController.checkForDelays); // Check for delayed tasks
 router.get("/tasks-by-employee/:employeeId", TaskController.getTasksByEmployee); // Get tasks assigned to a specific employee
 // TaskRoutes.js
 router.put("/update-task-progress", TaskController.updateTaskProgress); // Employees update task status
+router.get("/sync-orders", TaskController.syncWithOrders); // Sync with order system
 
 module.exports = router;
