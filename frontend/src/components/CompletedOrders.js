@@ -1,64 +1,157 @@
-// src/components/CompletedOrders.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './CompletedOrders.css'; // Import the CSS file
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import './CompletedOrders.css';
+
+// PDF Document Component
+const ProductionReportPDF = ({ order }) => (
+  <Document>
+    <Page style={styles.page}>
+      <View style={styles.section}>
+        <Text style={styles.header}>Production Report</Text>
+        <Text style={styles.subHeader}>Order ID: {order.orderId}</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableHeader}>Task Name</Text>
+            <Text style={styles.tableHeader}>Status</Text>
+            <Text style={styles.tableHeader}>Time (hrs)</Text>
+            <Text style={styles.tableHeader}>Due Date</Text>
+          </View>
+          
+          {order.tasks?.map((task, index) => (
+            <View style={styles.tableRow} key={index}>
+              <Text style={styles.tableCell}>{task.taskName}</Text>
+              <Text style={styles.tableCell}>{task.status}</Text>
+              <Text style={styles.tableCell}>{task.estimatedTime}</Text>
+              <Text style={styles.tableCell}>
+                {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
+              </Text>
+            </View>
+          ))}
+        </View>
+        
+        <View style={styles.summary}>
+          <Text>Total Estimated Time: {order.totalEstimatedTime} hours</Text>
+          <Text>Priority: {order.priorityLevel}</Text>
+          <Text>Risk Level: {order.riskLevel}</Text>
+          <Text>Completion Date: {new Date().toLocaleDateString()}</Text>
+        </View>
+      </View>
+    </Page>
+  </Document>
+);
+
+// PDF Styles
+const styles = StyleSheet.create({
+  page: { padding: 30 },
+  header: { fontSize: 24, marginBottom: 10, fontWeight: 'bold' },
+  subHeader: { fontSize: 16, marginBottom: 20 },
+  section: { marginBottom: 10 },
+  table: { display: 'flex', width: '100%', marginBottom: 20 },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+  tableHeader: { width: '25%', fontWeight: 'bold', padding: 5 },
+  tableCell: { width: '25%', padding: 5 },
+  summary: { marginTop: 20 }
+});
 
 const CompletedOrders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedOrder, setSelectedOrder] = useState(null);
 
     useEffect(() => {
         const fetchOrders = async () => {
-            setLoading(true);
-            setError(null);
             try {
                 const response = await axios.get('/tasks/orders');
                 setOrders(response.data.filter(order => order.progress === 100));
             } catch (error) {
-                console.error("Error fetching orders:", error);
                 setError("Failed to load completed orders.");
             } finally {
                 setLoading(false);
             }
         };
-
         fetchOrders();
     }, []);
 
-    if (loading) {
-        return <div className="completed-orders-container">Loading completed orders...</div>;
-    }
-
-    if (error) {
-        return <div className="completed-orders-container">Error: {error}</div>;
-    }
+    if (loading) return <div className="completed-orders-container">Loading...</div>;
+    if (error) return <div className="completed-orders-container">Error: {error}</div>;
 
     return (
         <div className="completed-orders-container">
             <h2>Completed Orders</h2>
-            <ul>
-                {orders.map(order => (
-                    <li key={order._id}>
-                        <div className="order-details">
-                            <p><span className="detail-label">Order ID:</span> {order.orderId}</p>
-                            <p><span className="detail-label">Priority:</span> {order.priorityLevel}</p>
-                            {order.totalEstimatedTime && (
-                                <p><span className="detail-label">Total Estimated Time:</span> {order.totalEstimatedTime} hours</p>
-                            )}
-                            {order.riskLevel && (
-                                <p><span className="detail-label">Risk Level:</span> {order.riskLevel}</p>
-                            )}
-                            {order.suggestedNewDeadline && (
-                                <p><span className="detail-label">Deadline:</span> {new Date(order.suggestedNewDeadline).toLocaleDateString()}</p>
-                            )}
-                            <p><span className="detail-label">Progress:</span> {order.progress}%</p>
-                            
-                            {/* You can access any other property of the 'order' object here */}
+            
+            {selectedOrder ? (
+                <div className="report-preview">
+                    <h3>Production Report Preview - Order #{selectedOrder.orderId}</h3>
+                    
+                    <div className="report-content">
+                        <h4>Tasks Summary</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Task Name</th>
+                                    <th>Status</th>
+                                    <th>Time (hrs)</th>
+                                    <th>Due Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {selectedOrder.tasks?.map((task, index) => (
+                                    <tr key={index}>
+                                        <td>{task.taskName}</td>
+                                        <td>{task.status}</td>
+                                        <td>{task.estimatedTime}</td>
+                                        <td>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        
+                        <div className="report-summary">
+                            <p><strong>Total Time:</strong> {selectedOrder.totalEstimatedTime} hours</p>
+                            <p><strong>Priority:</strong> {selectedOrder.priorityLevel}</p>
+                            <p><strong>Risk Level:</strong> {selectedOrder.riskLevel}</p>
                         </div>
-                    </li>
-                ))}
-            </ul>
+                        
+                        <div className="report-actions">
+                            <button onClick={() => setSelectedOrder(null)}
+                              className="back-button"  >
+                                Back to List
+                            </button>
+                            
+                            <PDFDownloadLink 
+                                document={<ProductionReportPDF order={selectedOrder} />}
+                                fileName={`production_report_${selectedOrder.orderId}.pdf`}
+                                className="pdf-download-button"
+                            >
+                                {({ loading }) => (loading ? 'Generating PDF...' : 'Export PDF')}
+                            </PDFDownloadLink>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <ul>
+                    {orders.map(order => (
+                        <li key={order._id}>
+                            <div className="order-details">
+                                <p><span className="detail-label">Order ID:</span> {order.orderId}</p>
+                                <p><span className="detail-label">Priority:</span> {order.priorityLevel}</p>
+                                {order.totalEstimatedTime && (
+                                    <p><span className="detail-label">Total Time:</span> {order.totalEstimatedTime} hours</p>
+                                )}
+                                <button 
+                                    className="report-button"
+                                    onClick={() => setSelectedOrder(order)}
+                                >
+                                    Production Report
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };
