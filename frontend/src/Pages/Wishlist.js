@@ -7,6 +7,7 @@ import {
     clearWishlist
 } from '../Services/wishlistService';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import './Wishlist.css';
 
 const Wishlist = () => {
@@ -36,6 +37,7 @@ const Wishlist = () => {
                 }
             } catch (err) {
                 setError('Failed to load wishlist');
+                toast.error('Failed to load wishlist');
             } finally {
                 setLoading(false);
             }
@@ -51,11 +53,14 @@ const Wishlist = () => {
             
             if (success) {
                 setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
+                toast.success('Item removed from wishlist');
             } else {
                 setError(error);
+                toast.error(error || 'Failed to remove item');
             }
         } catch (err) {
             setError('Failed to remove item');
+            toast.error('Failed to remove item');
         } finally {
             setActionLoading({...actionLoading, remove: null});
         }
@@ -64,15 +69,25 @@ const Wishlist = () => {
     const handleMoveToCart = async (productId) => {
         try {
             setActionLoading({...actionLoading, move: productId});
-            const { success, error } = await moveToCart(user._id, productId);
+            const { success, error, outOfStock, maxQuantity } = 
+                await moveToCart(user._id, productId);
             
             if (success) {
                 setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
+                toast.success('Item moved to cart successfully!');
             } else {
                 setError(error);
+                if (outOfStock) {
+                    toast.error('This item is currently out of stock');
+                } else if (maxQuantity) {
+                    toast.error(`You can add maximum ${maxQuantity} of this item to your cart`);
+                } else {
+                    toast.error(error || 'Failed to move item to cart');
+                }
             }
         } catch (err) {
             setError('Failed to move item to cart');
+            toast.error('Failed to move item to cart');
         } finally {
             setActionLoading({...actionLoading, move: null});
         }
@@ -85,11 +100,14 @@ const Wishlist = () => {
             
             if (success) {
                 setWishlistItems([]);
+                toast.success('Wishlist cleared successfully');
             } else {
                 setError(error);
+                toast.error(error || 'Failed to clear wishlist');
             }
         } catch (err) {
             setError('Failed to clear wishlist');
+            toast.error('Failed to clear wishlist');
         } finally {
             setActionLoading({...actionLoading, clear: false});
         }
@@ -150,18 +168,34 @@ const Wishlist = () => {
                                     <img 
                                         src={item.productId.image || '/placeholder-product.jpg'} 
                                         alt={item.productId.name}
+                                        onError={(e) => {
+                                            e.target.onerror = null; 
+                                            e.target.src = '/placeholder-product.jpg';
+                                        }}
                                     />
                                 </div>
                                 <div className="product-info">
                                     <h3>{item.productId.name}</h3>
                                     <p className="price">${item.productId.price.toFixed(2)}</p>
                                     <p className="category">{item.productId.category}</p>
+                                    <div className="stock-status">
+                                        {item.productId.stockQuantity > 0 ? (
+                                            <span className="in-stock">
+                                                In Stock ({item.productId.stockQuantity} available)
+                                            </span>
+                                        ) : (
+                                            <span className="out-of-stock">Out of Stock</span>
+                                        )}
+                                    </div>
                                 </div>
                             </Link>
                             <div className="item-actions">
                                 <button
                                     onClick={() => handleMoveToCart(item.productId._id)}
-                                    disabled={actionLoading.move === item.productId._id}
+                                    disabled={
+                                        actionLoading.move === item.productId._id || 
+                                        item.productId.stockQuantity <= 0
+                                    }
                                     className="move-btn"
                                 >
                                     {actionLoading.move === item.productId._id ? (

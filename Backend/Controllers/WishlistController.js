@@ -145,6 +145,28 @@ const moveToCart = async (req, res) => {
             return res.status(400).json({ success: false, error });
         }
 
+        // Get product details with current stock
+        const product = await Product.findById(productId).session(session);
+        if (!product) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ 
+                success: false,
+                error: "Product not found" 
+            });
+        }
+
+        // Check product availability
+        if (!product.availability || product.stockQuantity <= 0) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ 
+                success: false,
+                error: "Product is currently out of stock",
+                outOfStock: true
+            });
+        }
+
         // Remove from wishlist
         const updatedWishlist = await Wishlist.findOneAndUpdate(
             { userId },
@@ -161,21 +183,62 @@ const moveToCart = async (req, res) => {
             });
         }
 
-        // Add to cart (implement your cart logic here)
-        // await Cart.findOneAndUpdate(
-        //     { userId },
-        //     { $addToSet: { items: { productId, quantity: 1 } } },
-        //     { new: true, upsert: true, session }
-        // );
+        // Check if product already exists in cart
+        let cart = await Cart.findOne({ userId }).session(session);
+        const existingItem = cart?.items.find(item => 
+            item.productId.toString() === productId
+        );
+
+        if (existingItem) {
+            // Check if we can add more to cart
+            if (existingItem.quantity >= product.stockQuantity) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ 
+                    success: false,
+                    error: `Cannot add more than ${product.stockQuantity} items to cart`,
+                    maxQuantity: product.stockQuantity
+                });
+            }
+            
+            // Increment quantity
+            cart = await Cart.findOneAndUpdate(
+                { 
+                    userId,
+                    "items.productId": productId 
+                },
+                { $inc: { "items.$.quantity": 1 } },
+                { new: true, session }
+            );
+        } else {
+            // Add new item to cart
+            if (!cart) {
+                cart = new Cart({ userId, items: [] });
+                await cart.save({ session });
+            }
+            
+            cart = await Cart.findOneAndUpdate(
+                { userId },
+                { 
+                    $addToSet: { 
+                        items: { 
+                            productId, 
+                            quantity: 1 
+                        } 
+                    } 
+                },
+                { new: true, upsert: true, session }
+            );
+        }
 
         await session.commitTransaction();
         session.endSession();
 
         res.status(200).json({
             success: true,
-            message: "Item moved to cart",
+            message: "Item moved to cart successfully",
             wishlist: updatedWishlist,
-            items: updatedWishlist.items
+            cart
         });
     } catch (error) {
         await session.abortTransaction();
@@ -183,7 +246,7 @@ const moveToCart = async (req, res) => {
         console.error("Move to cart error:", error);
         res.status(500).json({ 
             success: false,
-            error: "Internal server error" 
+            error: error.message || "Failed to move item to cart" 
         });
     }
 };
