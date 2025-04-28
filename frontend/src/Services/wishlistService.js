@@ -29,13 +29,13 @@ export const addItemToWishlist = async (userId, productId) => {
 };
 
 /**
- * Get user's wishlist
+ * Get user's wishlist with updated product information
  * @param {string} userId - ID of the user
  * @returns {Promise<Object>} Response data with wishlist items
  */
 export const getWishlist = async (userId) => {
     try {
-        const response = await api.get(`${API_BASE_URL}/user/${userId}`);
+        const response = await api.get(`${API_BASE_URL}/user/${userId}?freshData=true`);
         return {
             success: true,
             items: response.data.items || [],
@@ -50,6 +50,7 @@ export const getWishlist = async (userId) => {
         };
     }
 };
+
 
 /**
  * Remove item from wishlist
@@ -88,6 +89,7 @@ export const moveToCart = async (userId, productId) => {
         return {
             success: true,
             wishlist: response.data.wishlist,
+            cart: response.data.cart,
             message: response.data.message || 'Item moved to cart'
         };
     } catch (error) {

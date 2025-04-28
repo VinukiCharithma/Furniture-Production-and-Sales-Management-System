@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../Context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from 'react-toastify';
+import { getProductImageUrl, handleImageError } from "../utils/imageUtils";
 import "./Cart.css";
 
 const Cart = () => {
@@ -29,7 +29,6 @@ const Cart = () => {
       } catch (error) {
         console.error("Error fetching cart:", error);
         setError("Failed to load your cart. Please try again later.");
-        toast.error("Failed to load your cart");
       } finally {
         setLoading(false);
       }
@@ -39,16 +38,7 @@ const Cart = () => {
   }, [user, navigate]);
 
   const updateQuantity = async (productId, newQuantity) => {
-    if (newQuantity < 1) return;
-    
     try {
-      const product = cart.items.find(item => item.productId._id === productId)?.productId;
-      
-      if (product && newQuantity > product.stockQuantity) {
-        toast.error(`Only ${product.stockQuantity} available in stock`);
-        return;
-      }
-
       await axios.put(`http://localhost:5000/cart/${user._id}/${productId}`, {
         quantity: newQuantity,
       });
@@ -56,10 +46,9 @@ const Cart = () => {
         `http://localhost:5000/cart/${user._id}`
       );
       setCart(response.data);
-      toast.success('Cart updated successfully');
     } catch (error) {
       console.error("Error updating quantity:", error);
-      toast.error("Failed to update quantity. Please try again.");
+      alert("Failed to update quantity. Please try again.");
     }
   };
 
@@ -70,10 +59,9 @@ const Cart = () => {
         `http://localhost:5000/cart/${user._id}`
       );
       setCart(response.data);
-      toast.success('Item removed from cart');
     } catch (error) {
       console.error("Error removing item:", error);
-      toast.error("Failed to remove item. Please try again.");
+      alert("Failed to remove item. Please try again.");
     }
   };
 
@@ -81,10 +69,9 @@ const Cart = () => {
     try {
       await axios.delete(`http://localhost:5000/cart/${user._id}/clear`);
       setCart({ ...cart, items: [] });
-      toast.success('Cart cleared successfully');
     } catch (error) {
       console.error("Error clearing cart:", error);
-      toast.error("Failed to clear cart. Please try again.");
+      alert("Failed to clear cart. Please try again.");
     }
   };
 
@@ -116,12 +103,9 @@ const Cart = () => {
           <div key={item.productId._id} className="cart-item">
             <div className="item-image-container">
               <img
-                src={item.productId.image || '/placeholder-product.jpg'}
+                src={getProductImageUrl(item.productId?.image)}
                 alt={item.productId?.name || "Product"}
-                onError={(e) => {
-                  e.target.onerror = null; 
-                  e.target.src = '/placeholder-product.jpg';
-                }}
+                onError={handleImageError}
                 className="cart-item-image"
               />
             </div>
@@ -133,16 +117,6 @@ const Cart = () => {
                 </Link>
               </h3>
               <p>Price: Rs. {item.productId.price.toFixed(2)}</p>
-              
-              <div className="stock-info">
-                {item.productId.stockQuantity > 0 ? (
-                  <span className="in-stock">
-                    In Stock ({item.productId.stockQuantity} available)
-                  </span>
-                ) : (
-                  <span className="out-of-stock">Out of Stock</span>
-                )}
-              </div>
 
               <div className="quantity-control">
                 <button
@@ -155,14 +129,9 @@ const Cart = () => {
                 </button>
                 <span>{item.quantity}</span>
                 <button
-                  onClick={() => {
-                    if (item.quantity < item.productId.stockQuantity) {
-                      updateQuantity(item.productId._id, item.quantity + 1);
-                    } else {
-                      toast.error(`Only ${item.productId.stockQuantity} available`);
-                    }
-                  }}
-                  disabled={item.quantity >= item.productId.stockQuantity}
+                  onClick={() =>
+                    updateQuantity(item.productId._id, item.quantity + 1)
+                  }
                 >
                   +
                 </button>

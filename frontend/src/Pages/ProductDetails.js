@@ -101,32 +101,39 @@ const ProductDetails = () => {
 
   const handleWishlistAction = async () => {
     if (!user) {
-      navigate("/login");
-      return;
+        navigate("/login");
+        return;
     }
 
     try {
-      setWishlistLoading(true);
-      if (isInWishlist) {
-        await api.delete(`/wishlists/remove/${user._id}/${id}`);
-        setIsInWishlist(false);
-      } else {
-        await api.post("/wishlists/add", {
-          userId: user._id,
-          productId: id,
-        });
-        setIsInWishlist(true);
-      }
+        setWishlistLoading(true);
+        if (isInWishlist) {
+            await api.delete(`/wishlists/remove/${user._id}/${id}`);
+            setIsInWishlist(false);
+        } else {
+            if (!product.availability) {
+                const confirmAdd = window.confirm(
+                    "This product is currently out of stock. Are you sure you want to add it to your wishlist?"
+                );
+                if (!confirmAdd) return;
+            }
+            
+            await api.post("/wishlists/add", {
+                userId: user._id,
+                productId: id,
+            });
+            setIsInWishlist(true);
+        }
     } catch (error) {
-      console.error("Error updating wishlist:", error);
-      alert(
-        error.response?.data?.error ||
-          "Failed to update wishlist. Please try again."
-      );
+        console.error("Error updating wishlist:", error);
+        alert(
+            error.response?.data?.error ||
+            "Failed to update wishlist. Please try again."
+        );
     } finally {
-      setWishlistLoading(false);
+        setWishlistLoading(false);
     }
-  };
+};
 
   if (loading) {
     return (
@@ -272,7 +279,7 @@ const ProductDetails = () => {
           )}
 
           <div className="action-buttons">
-            {product.availability && (
+            {product.availability ? (
               <>
                 <button className="add-to-cart" onClick={handleAddToCart}>
                   Add to Cart
@@ -281,6 +288,13 @@ const ProductDetails = () => {
                   Buy Now
                 </button>
               </>
+            ) : (
+              <button 
+                className="notify-me"
+                onClick={() => alert("We'll notify you when this product is back in stock!")}
+              >
+                Notify When Available
+              </button>
             )}
             <button
               className={`wishlist-button ${isInWishlist ? "in-wishlist" : ""}`}

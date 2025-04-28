@@ -7,7 +7,7 @@ import {
     clearWishlist
 } from '../Services/wishlistService';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { getProductImageUrl, handleImageError } from '../utils/imageUtils';
 import './Wishlist.css';
 
 const Wishlist = () => {
@@ -20,29 +20,29 @@ const Wishlist = () => {
         move: null,
         clear: false
     });
+    const [reminderSet, setReminderSet] = useState({});
+
+    const fetchWishlist = async () => {
+        if (!user) return;
+        
+        try {
+            setLoading(true);
+            const { success, items, error } = await getWishlist(user._id);
+            
+            if (success) {
+                setWishlistItems(items);
+                setError('');
+            } else {
+                setError(error);
+            }
+        } catch (err) {
+            setError('Failed to load wishlist');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchWishlist = async () => {
-            if (!user) return;
-            
-            try {
-                setLoading(true);
-                const { success, items, error } = await getWishlist(user._id);
-                
-                if (success) {
-                    setWishlistItems(items);
-                    setError('');
-                } else {
-                    setError(error);
-                }
-            } catch (err) {
-                setError('Failed to load wishlist');
-                toast.error('Failed to load wishlist');
-            } finally {
-                setLoading(false);
-            }
-        };
-        
         fetchWishlist();
     }, [user]);
 
@@ -53,14 +53,11 @@ const Wishlist = () => {
             
             if (success) {
                 setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
-                toast.success('Item removed from wishlist');
             } else {
                 setError(error);
-                toast.error(error || 'Failed to remove item');
             }
         } catch (err) {
             setError('Failed to remove item');
-            toast.error('Failed to remove item');
         } finally {
             setActionLoading({...actionLoading, remove: null});
         }
@@ -69,28 +66,37 @@ const Wishlist = () => {
     const handleMoveToCart = async (productId) => {
         try {
             setActionLoading({...actionLoading, move: productId});
-            const { success, error, outOfStock, maxQuantity } = 
-                await moveToCart(user._id, productId);
+            
+            const product = wishlistItems.find(item => item.productId._id === productId)?.productId;
+            
+            if (!product) {
+                setError('Product not found in wishlist');
+                return;
+            }
+            
+            if (!product.availability) {
+                alert('This product is currently out of stock. You can set a reminder for when it becomes available.');
+                return;
+            }
+            
+            const { success, error } = await moveToCart(user._id, productId);
             
             if (success) {
                 setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
-                toast.success('Item moved to cart successfully!');
+                alert('Item successfully added to your cart!');
             } else {
-                setError(error);
-                if (outOfStock) {
-                    toast.error('This item is currently out of stock');
-                } else if (maxQuantity) {
-                    toast.error(`You can add maximum ${maxQuantity} of this item to your cart`);
-                } else {
-                    toast.error(error || 'Failed to move item to cart');
-                }
+                setError(error || 'Failed to add item to cart');
             }
         } catch (err) {
             setError('Failed to move item to cart');
-            toast.error('Failed to move item to cart');
         } finally {
             setActionLoading({...actionLoading, move: null});
         }
+    };
+
+    const handleSetReminder = (productId) => {
+        setReminderSet(prev => ({ ...prev, [productId]: true }));
+        alert('We will notify you when this product is back in stock!');
     };
 
     const handleClearWishlist = async () => {
@@ -100,17 +106,18 @@ const Wishlist = () => {
             
             if (success) {
                 setWishlistItems([]);
-                toast.success('Wishlist cleared successfully');
             } else {
                 setError(error);
-                toast.error(error || 'Failed to clear wishlist');
             }
         } catch (err) {
             setError('Failed to clear wishlist');
-            toast.error('Failed to clear wishlist');
         } finally {
             setActionLoading({...actionLoading, clear: false});
         }
+    };
+
+    const handleRefreshWishlist = async () => {
+        await fetchWishlist();
     };
 
     if (!user) {
@@ -136,15 +143,26 @@ const Wishlist = () => {
         <div className="wishlist-container">
             <div className="wishlist-header">
                 <h2>My Wishlist</h2>
-                {wishlistItems.length > 0 && (
-                    <button 
-                        onClick={handleClearWishlist}
-                        disabled={actionLoading.clear}
-                        className="clear-btn"
-                    >
-                        {actionLoading.clear ? 'Clearing...' : 'Clear All'}
-                    </button>
-                )}
+                <div className="wishlist-actions">
+                    {wishlistItems.length > 0 && (
+                        <>
+                            <button 
+                                onClick={handleClearWishlist}
+                                disabled={actionLoading.clear}
+                                className="clear-btn"
+                            >
+                                {actionLoading.clear ? 'Clearing...' : 'Clear All'}
+                            </button>
+                            <button 
+                                onClick={handleRefreshWishlist}
+                                disabled={loading}
+                                className="refresh-btn"
+                            >
+                                {loading ? 'Refreshing...' : 'Refresh'}
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {error && <div className="error-message">{error}</div>}
@@ -158,66 +176,63 @@ const Wishlist = () => {
                 </div>
             ) : (
                 <div className="wishlist-items">
-                    {wishlistItems.map((item) => (
-                        <div key={item.productId._id} className="wishlist-item">
-                            <Link 
-                                to={`/products/${item.productId._id}`}
-                                className="product-link"
-                            >
-                                <div className="product-image">
-                                    <img 
-                                        src={item.productId.image || '/placeholder-product.jpg'} 
-                                        alt={item.productId.name}
-                                        onError={(e) => {
-                                            e.target.onerror = null; 
-                                            e.target.src = '/placeholder-product.jpg';
-                                        }}
-                                    />
-                                </div>
-                                <div className="product-info">
-                                    <h3>{item.productId.name}</h3>
-                                    <p className="price">${item.productId.price.toFixed(2)}</p>
-                                    <p className="category">{item.productId.category}</p>
-                                    <div className="stock-status">
-                                        {item.productId.stockQuantity > 0 ? (
-                                            <span className="in-stock">
-                                                In Stock ({item.productId.stockQuantity} available)
-                                            </span>
-                                        ) : (
-                                            <span className="out-of-stock">Out of Stock</span>
+                    {wishlistItems.map((item) => {
+                        const isOutOfStock = !item.productId.availability;
+                        const hasReminder = reminderSet[item.productId._id];
+                        
+                        return (
+                            <div key={item.productId._id} className="wishlist-item">
+                                <Link 
+                                    to={`/products/${item.productId._id}`}
+                                    className="product-link"
+                                >
+                                    <div className="product-image">
+                                        <img 
+                                            src={getProductImageUrl(item.productId.image)} 
+                                            alt={item.productId.name}
+                                            onError={handleImageError}
+                                        />
+                                    </div>
+                                    <div className="product-info">
+                                        <h3>{item.productId.name}</h3>
+                                        <p className="price">Rs. {item.productId.price.toFixed(2)}</p>
+                                        <p className="category">{item.productId.category}</p>
+                                        {isOutOfStock && (
+                                            <p className="out-of-stock">Out of Stock</p>
                                         )}
                                     </div>
+                                </Link>
+                                <div className="item-actions">
+                                    <button
+                                        onClick={() => isOutOfStock ? 
+                                            handleSetReminder(item.productId._id) : 
+                                            handleMoveToCart(item.productId._id)}
+                                        disabled={actionLoading.move === item.productId._id}
+                                        className={`move-btn ${isOutOfStock ? 'set-reminder' : ''}`}
+                                    >
+                                        {actionLoading.move === item.productId._id ? (
+                                            'Processing...'
+                                        ) : isOutOfStock ? (
+                                            hasReminder ? 'Reminder Set ✓' : 'Notify When Available'
+                                        ) : (
+                                            'Move to Cart'
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => handleRemoveItem(item.productId._id)}
+                                        disabled={actionLoading.remove === item.productId._id}
+                                        className="remove-btn"
+                                    >
+                                        {actionLoading.remove === item.productId._id ? (
+                                            'Removing...'
+                                        ) : (
+                                            'Remove'
+                                        )}
+                                    </button>
                                 </div>
-                            </Link>
-                            <div className="item-actions">
-                                <button
-                                    onClick={() => handleMoveToCart(item.productId._id)}
-                                    disabled={
-                                        actionLoading.move === item.productId._id || 
-                                        item.productId.stockQuantity <= 0
-                                    }
-                                    className="move-btn"
-                                >
-                                    {actionLoading.move === item.productId._id ? (
-                                        'Moving...'
-                                    ) : (
-                                        'Move to Cart'
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => handleRemoveItem(item.productId._id)}
-                                    disabled={actionLoading.remove === item.productId._id}
-                                    className="remove-btn"
-                                >
-                                    {actionLoading.remove === item.productId._id ? (
-                                        'Removing...'
-                                    ) : (
-                                        'Remove'
-                                    )}
-                                </button>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

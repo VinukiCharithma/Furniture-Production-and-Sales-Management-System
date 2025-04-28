@@ -8,70 +8,84 @@ const AddProduct = () => {
     category: "",
     price: "",
     material: "",
-    image: "",
     availability: true,
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [errors, setErrors] = useState({}); // Store validation errors
-
-  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProductData({ ...productData, [name]: value });
   };
 
-  // Validate form fields
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
   const validateForm = () => {
     let newErrors = {};
-
-    if (!productData.name.trim()) {//remove whitespaces
+    if (!productData.name.trim()) {
       newErrors.name = "Product name is required.";
     } else if (productData.name.length < 3) {
       newErrors.name = "Product name must be at least 3 characters long.";
     }
-
     if (!productData.category.trim()) {
       newErrors.category = "Category is required.";
     }
-
     if (!productData.price) {
       newErrors.price = "Price is required.";
-    } else if (isNaN(productData.price) || productData.price <= 0) {//check is it a number?
+    } else if (isNaN(productData.price) || productData.price <= 0) {
       newErrors.price = "Price must be a positive number.";
     }
-
     if (!productData.material.trim()) {
       newErrors.material = "Material is required.";
     }
-
-
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Returns true if no errors
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return; // Stop submission if validation fails
-    }
-
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
     try {
-      await axios.post("http://localhost:5000/products", productData);
+      const formData = new FormData();
+      formData.append('name', productData.name);
+      formData.append('category', productData.category);
+      formData.append('price', productData.price);
+      formData.append('material', productData.material);
+      formData.append('availability', productData.availability);
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
+      const response = await axios.post("http://localhost:5000/products", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
       alert("Product added successfully!");
+      // Reset form
       setProductData({
         name: "",
         category: "",
         price: "",
         material: "",
-        image: "",
         availability: true,
-      }); // Reset form
-      setErrors({}); // Clear errors after successful submission
+      });
+      setImageFile(null);
+      setErrors({});
     } catch (error) {
       console.error("Error adding product:", error);
-      alert("Failed to add product.");
+      alert("Failed to add product. " + (error.response?.data?.message || ""));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -100,8 +114,13 @@ const AddProduct = () => {
           {errors.material && <p className="error">{errors.material}</p>}
         </div>
         <div className="form-group">
-          <label>Image URL:</label>
-          <input type="text" name="image" value={productData.image} onChange={handleInputChange} />
+          <label>Product Image:</label>
+          <input 
+            type="file" 
+            name="image" 
+            onChange={handleImageChange}
+            accept="image/*"
+          />
           {errors.image && <p className="error">{errors.image}</p>}
         </div>
         <div className="form-group">
@@ -109,10 +128,11 @@ const AddProduct = () => {
           <select name="availability" value={productData.availability} onChange={handleInputChange}>
             <option value={true}>In Stock</option>
             <option value={false}>Out of Stock</option>
-            <option value="pre-order">Pre-Order</option>
           </select>
         </div>
-        <button type="submit" className="submit-button">Add Product</button>
+        <button type="submit" className="submit-button" disabled={isSubmitting}>
+          {isSubmitting ? 'Adding...' : 'Add Product'}
+        </button>
       </form>
     </div>
   );

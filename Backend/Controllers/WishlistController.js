@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Wishlist = require("../Model/WishlistModel");
 const Product = require("../Model/ProductModel");
+const Cart = require("../Model/CartModel");
 
 // Helper function to validate IDs
 const validateIds = (userId, productId = null) => {
@@ -48,7 +49,7 @@ const addItemToWishlist = async (req, res) => {
             { userId },
             { $addToSet: { items: { productId } } },
             { new: true, upsert: true }
-        ).populate("items.productId", "name price image category");
+        ).populate("items.productId", "name price image category availability");
 
         res.status(200).json({
             success: true,
@@ -69,18 +70,35 @@ const addItemToWishlist = async (req, res) => {
 const getWishlist = async (req, res) => {
     try {
         const { userId } = req.params;
+        const { freshData } = req.query;
         
         // Validate ID
         const { valid, error } = validateIds(userId);
         if (!valid) return res.status(400).json({ success: false, error });
 
-        const wishlist = await Wishlist.findOne({ userId })
-            .populate("items.productId", "name price image category");
+        const wishlist = await Wishlist.findOne({ userId });
+        
+        if (!wishlist) {
+            return res.status(200).json({ 
+                success: true,
+                items: [], 
+                wishlist: null 
+            });
+        }
+
+        // Get fresh product data for each item
+        const items = await Promise.all(wishlist.items.map(async (item) => {
+            const product = await Product.findById(item.productId);
+            return {
+                ...item.toObject(),
+                productId: product // Replace with fresh product data
+            };
+        }));
 
         res.status(200).json({
             success: true,
-            items: wishlist?.items || [],
-            wishlist: wishlist || { items: [] }
+            items,
+            wishlist
         });
     } catch (error) {
         console.error("Wishlist fetch error:", error);
@@ -145,7 +163,7 @@ const moveToCart = async (req, res) => {
             return res.status(400).json({ success: false, error });
         }
 
-        // Get product details with current stock
+        // 1. Get product with availability check
         const product = await Product.findById(productId).session(session);
         if (!product) {
             await session.abortTransaction();
@@ -156,18 +174,16 @@ const moveToCart = async (req, res) => {
             });
         }
 
-        // Check product availability
-        if (!product.availability || product.stockQuantity <= 0) {
+        if (!product.availability) {
             await session.abortTransaction();
             session.endSession();
             return res.status(400).json({ 
                 success: false,
-                error: "Product is currently out of stock",
-                outOfStock: true
+                error: "Product is out of stock" 
             });
         }
 
-        // Remove from wishlist
+        // 2. Remove from wishlist
         const updatedWishlist = await Wishlist.findOneAndUpdate(
             { userId },
             { $pull: { items: { productId } } },
@@ -183,62 +199,32 @@ const moveToCart = async (req, res) => {
             });
         }
 
-        // Check if product already exists in cart
+        // 3. Add to cart
         let cart = await Cart.findOne({ userId }).session(session);
-        const existingItem = cart?.items.find(item => 
-            item.productId.toString() === productId
-        );
-
-        if (existingItem) {
-            // Check if we can add more to cart
-            if (existingItem.quantity >= product.stockQuantity) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({ 
-                    success: false,
-                    error: `Cannot add more than ${product.stockQuantity} items to cart`,
-                    maxQuantity: product.stockQuantity
-                });
-            }
-            
-            // Increment quantity
-            cart = await Cart.findOneAndUpdate(
-                { 
-                    userId,
-                    "items.productId": productId 
-                },
-                { $inc: { "items.$.quantity": 1 } },
-                { new: true, session }
-            );
-        } else {
-            // Add new item to cart
-            if (!cart) {
-                cart = new Cart({ userId, items: [] });
-                await cart.save({ session });
-            }
-            
-            cart = await Cart.findOneAndUpdate(
-                { userId },
-                { 
-                    $addToSet: { 
-                        items: { 
-                            productId, 
-                            quantity: 1 
-                        } 
-                    } 
-                },
-                { new: true, upsert: true, session }
-            );
+        if (!cart) {
+            cart = new Cart({ userId, items: [] });
         }
+
+        const existingItem = cart.items.find(item => item.productId.toString() === productId);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.items.push({ productId, quantity: 1 });
+        }
+
+        await cart.save({ session });
 
         await session.commitTransaction();
         session.endSession();
 
         res.status(200).json({
             success: true,
-            message: "Item moved to cart successfully",
+            message: "Item moved to cart",
             wishlist: updatedWishlist,
-            cart
+            cart: {
+                _id: cart._id,
+                items: cart.items
+            }
         });
     } catch (error) {
         await session.abortTransaction();
@@ -246,7 +232,7 @@ const moveToCart = async (req, res) => {
         console.error("Move to cart error:", error);
         res.status(500).json({ 
             success: false,
-            error: error.message || "Failed to move item to cart" 
+            error: "Internal server error" 
         });
     }
 };
