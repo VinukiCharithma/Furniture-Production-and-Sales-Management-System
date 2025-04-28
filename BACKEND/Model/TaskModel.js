@@ -101,18 +101,7 @@ const taskSchema = new Schema({
     productionEndDate: {
         type: Date,
         default: null
-    },
-    notes: [{
-        text: String,
-        addedBy: {
-            type: Schema.Types.ObjectId,
-            ref: "EmpModel"
-        },
-        createdAt: {
-            type: Date,
-            default: Date.now
-        }
-    }]
+    }
 }, { 
     timestamps: true,
     collection: 'taskmodels' 

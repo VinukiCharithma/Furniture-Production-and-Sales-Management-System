@@ -55,22 +55,22 @@ const previewTaskSchedule = async (req, res, next) => {
         }
 
         // 4. Prepare response with order context
-        res.status(200).json({
-            message: "Tasks generated successfully",
-            tasks: {  // <-- This should be an object with a tasks array
-                tasks: aiResponse.tasks  
-            },
-            totalEstimatedTime: aiResponse.totalEstimatedTime,
-            riskLevel: aiResponse.riskLevel,
-            orderSnapshot: {
-                customer: order.userId.name,
-                items: order.items.map(item => ({
-                    name: item.productId.name,
-                    quantity: item.quantity
-                })),
-                address: order.shippingAddress
-            }
-        });
+       // In TaskController.js previewTaskSchedule
+// 3. Return preview data WITHOUT saving
+res.status(200).json({
+    message: "Preview generated successfully",
+    tasks: aiResponse.tasks,
+    totalEstimatedTime: aiResponse.totalEstimatedTime,
+    riskLevel: aiResponse.riskLevel,
+    orderSnapshot: {
+        customer: order.userId.name,
+        items: order.items.map(item => ({
+            name: item.productId.name,
+            quantity: item.quantity
+        })),
+        address: order.shippingAddress
+    }
+});
 
     } catch (error) {
         console.error("Error in previewTaskSchedule:", error);
@@ -90,9 +90,9 @@ function generateRequirementsFromOrderData(orderData) {
     return "Generate a task schedule based on the available order information.";
 }
 
-// 3️⃣ Save AI-generated task schedule by updating the existing order
+// 3️⃣ Save to DB ONLY when confirmed
 const saveTaskSchedule = async (req, res, next) => {
-    const { orderId, tasks, totalEstimatedTime, riskLevel, suggestedNewDeadline } = req.body;
+    const { orderId, tasks, totalEstimatedTime, riskLevel} = req.body;
 
     try {
         // 1. Verify the original order exists in OrderModel
@@ -113,6 +113,7 @@ const saveTaskSchedule = async (req, res, next) => {
         // 3. Create new task document in TaskModel
         const newTask = new Task({
             orderId: order._id, // Reference to OrderModel
+            originalOrderStatus: "processing",
             priorityLevel: "Medium",
             tasks: tasks.tasks,
             totalEstimatedTime: totalEstimatedTime,
@@ -120,8 +121,13 @@ const saveTaskSchedule = async (req, res, next) => {
             customerApproval: "Approved",
             progress: 0,
             dispatchStatus: false,
-            originalOrder: order._id,
-            suggestedNewDeadline: suggestedNewDeadline || null
+            orderDetails: {
+                customer: order.userId,
+                items: order.items,
+                shippingAddress: order.shippingAddress,
+                totalPrice: order.totalPrice
+            }
+    
         });
 
         // 4. Save to TaskModel

@@ -12,25 +12,25 @@ const PendingOrders = () => {
     const navigate = useNavigate();
 
     // Modify your useEffect in PendingOrders.js
-useEffect(() => {
-    const fetchOrders = async () => {
-        try {
-            // First sync with order system
-            await axios.get('/tasks/sync-orders');
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                // First sync with order system
+                await axios.get('/tasks/sync-orders');
             
-            // Then fetch pending orders
-            const response = await axios.get('/tasks/orders');
-            setOrders(response.data.filter(order => 
-                order.customerApproval === "Pending" && 
-                order.originalOrderStatus === "processing"
-            ));
-        } catch (error) {
-            console.error("Error fetching orders:", error);
-        }
-    };
+                // Then fetch pending orders
+                const response = await axios.get('/tasks/orders');
+                setOrders(response.data.filter(order => 
 
-    fetchOrders();
-}, []);
+                order.originalOrderStatus === "processing"
+                ));
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+            }
+        };
+
+        fetchOrders();
+        }, []);
 
     const getTwoWeeksFromNow = () => {
         const now = new Date();
@@ -67,18 +67,12 @@ useEffect(() => {
         try {
             console.log('Attempting to generate tasks for order:', orderId);
             
-            // Add loading state
-            
             const response = await axios.post('/tasks/preview-tasks', {
                 orderId: orderId,
                 deadline: deadline
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
             });
     
-            console.log('Full response:', response);
+            console.log('API Response:', response.data);
     
             if (!response.data?.tasks) {
                 throw new Error("No tasks data in response");
@@ -93,12 +87,11 @@ useEffect(() => {
             });
     
         } catch (error) {
-            console.error("Full error:", error);
-            console.error("Error response:", error.response?.data);
+            console.error("Error generating tasks:", error);
             setDeadlineError(error.response?.data?.message || 
-                            error.message || 
-                            "Failed to generate tasks");
-        } 
+                           error.message || 
+                           "Failed to generate tasks");
+        }
     };
 
     return (
