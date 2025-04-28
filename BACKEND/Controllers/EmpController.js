@@ -1,103 +1,115 @@
 const Emp = require("../Model/EmpModel");
+const fs = require('fs');
+const path = require('path');
 
-//Employee Display
-const getAllEmp = async (req, res, next) => {
-    let emps;
-    //get all emps
-    try{
-        emps = await Emp.find();
-    } catch (err){
-        console.log(err);
+// Get all employees
+exports.getAllEmployees = async (req, res, next) => {
+    try {
+        const employees = await Emp.find().sort({ name: 1 });
+        res.status(200).json(employees);
+    } catch (error) {
+        next(error);
     }
-    //emp not found
-    if(!emps){
-        return res.status(404).json({message:"Employees not found"});
-    }
-
-    //display employees
-    return res.status(200).json({emps});
 };
 
-//Employee Insert
-const addEmp = async (req, res, next) => {
-    const {first_name,last_name,phone,job,status,username,password} = req.body;
-    let emps;
-
-    try{
-       emps = new Emp({first_name,last_name,phone,job,status,username,password});
-       await emps.save();
-    }catch (err) {
-        console.log(err);
+// Get single employee
+exports.getEmployee = async (req, res, next) => {
+    try {
+        const employee = await Emp.findById(req.params.id);
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+        res.status(200).json(employee);
+    } catch (error) {
+        next(error);
     }
-    //not insert
-    if(!emps){
-        return res.status(404).send({message:"Unable to add employee"});
-    }
-    return res.status(200).json({emps});
 };
 
-//Get emp by ID
-const getById = async (req, res, next) => {
-    const id = req.params.id;
-    let emp;
-    try{
-        emp = await Emp.findById(id);
-    }catch(err){
-        console.log(err);
-    }
-    //emp not found
-    if(!emp){
-        return res.status(404).json({message:"Employee not found"});
-    }
-    //display employees
-    return res.status(200).json(emp);
-};
-
-//Update Emp
-const updateEmp = async (req, res, next) => {
-    const id = req.params.id;
-    const {first_name,last_name,phone,job,status,username,password} = req.body;
-
-    let emp;
-
-    try{
-        emp = await Emp.findByIdAndUpdate(id,{first_name,last_name,phone,job,status,username,password});
-        emp = await emp.save();
-    } catch(err){
-        console.log(err);
-    }
-    //emp not found
-    if(!emp){
-        return res.status(404).json({message:"Unable to update Employee"});
-    }
-    //display employees
-    return res.status(200).json(emp);
-
-};
-
-//Delete Emp
-const deleteEmp = async (req, res, next) => {
-    const id = req.params.id;
-
-    let emp;
+// Create new employee
+exports.createEmployee = async (req, res, next) => {
+    try {
+        const { name, address, phone, role, status } = req.body;
+        let imagePath = '';
         
-    try{
-        emp = await Emp.findByIdAndDelete(id);
-    }catch(err){
-        console.log(err);
-    }
-    //emp not found
-    if(!emp){
-        return res.status(404).json({message:"Unable to remove Employee"});
-    }
-    //display employees
-    return res.status(200).json(emp);
+        if (req.file) {
+            imagePath = '/uploads/employees/' + req.file.filename;
+        }
 
+        const newEmployee = new Emp({
+            name,
+            image: imagePath,
+            address,
+            phone,
+            role,
+            status
+        });
+
+        await newEmployee.save();
+        res.status(201).json({ 
+            message: "Employee created successfully",
+            employee: newEmployee
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
+// Update employee
+exports.updateEmployee = async (req, res, next) => {
+    try {
+        const { name, address, phone, role, status } = req.body;
+        const updateData = { name, address, phone, role, status };
+        
+        if (req.file) {
+            updateData.image = '/uploads/employees/' + req.file.filename;
+            // Delete old image if exists
+            const oldEmployee = await Emp.findById(req.params.id);
+            if (oldEmployee.image) {
+                const oldImagePath = path.join(__dirname, '../public', oldEmployee.image);
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            }
+        }
 
-exports.getAllEmp = getAllEmp;
-exports.addEmp = addEmp;
-exports.getById = getById;
-exports.updateEmp = updateEmp;
-exports.deleteEmp = deleteEmp;
+        const updatedEmployee = await Emp.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
+
+        if (!updatedEmployee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+
+        res.status(200).json({ 
+            message: "Employee updated successfully",
+            employee: updatedEmployee
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Delete employee
+exports.deleteEmployee = async (req, res, next) => {
+    try {
+        const employee = await Emp.findByIdAndDelete(req.params.id);
+        
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+
+        // Delete associated image
+        if (employee.image) {
+            const imagePath = path.join(__dirname, '../public', employee.image);
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+            }
+        }
+
+        res.status(200).json({ message: "Employee deleted successfully" });
+    } catch (error) {
+        next(error);
+    }
+};

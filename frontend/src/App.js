@@ -9,6 +9,8 @@ import CompletedOrders from './components/CompletedOrders';
 import OrderDetails from './components/OrderDetails';
 import TaskPreview from './components/TaskPreview';
 import Alerts from './components/Alerts';
+import EmployeeList from './components/EmployeeList';
+import EmployeeForm from './components/EmployeeForm';
 
 function App() {
     return (
@@ -22,6 +24,9 @@ function App() {
                 <Route path="/order/:id" element={<OrderDetails />} />
                 <Route path="/taskpreview" element={<TaskPreview />} />
                 <Route path="/alerts" element={<Alerts />} />
+                <Route path="/employees" element={<EmployeeList />} />
+                <Route path="/employees/add" element={<EmployeeForm />} />
+                <Route path="/employees/edit/:id" element={<EmployeeForm />} />
             </Routes>
         </Router>
     );

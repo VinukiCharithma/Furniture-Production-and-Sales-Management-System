@@ -1,16 +1,13 @@
 const express = require("express");
 const router = express.Router();
-
-//Insert Model
-const Emp = require("../Model/EmpModel");
-//Insert Controller
 const EmpController = require("../Controllers/EmpController");
+const upload = require("../middleware/upload"); // For image uploads
 
-router.get("/",EmpController.getAllEmp);
-router.post("/",EmpController.addEmp);
-router.get("/:id",EmpController.getById);
-router.put("/:id",EmpController.updateEmp);
-router.delete("/:id",EmpController.deleteEmp);
+// Employee CRUD routes
+router.get("/", EmpController.getAllEmployees);
+router.get("/:id", EmpController.getEmployee);
+router.post("/", upload.single('image'), EmpController.createEmployee);
+router.put("/:id", upload.single('image'), EmpController.updateEmployee);
+router.delete("/:id", EmpController.deleteEmployee);
 
-//export
 module.exports = router;
